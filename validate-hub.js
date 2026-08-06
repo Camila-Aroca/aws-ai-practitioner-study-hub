@@ -5,7 +5,7 @@ const context = {window:{}};
 context.window.window = context.window;
 vm.createContext(context);
 
-["data/domain1.js","data/legacy-activities.js","data/study-hub.js"].forEach(file => {
+["data/domain1.js","data/legacy-activities.js","data/exams/domain1-exam-config.js","data/exams/domain1-question-bank.js","data/reinforcement/domain1-reinforcement.js","data/study-hub.js"].forEach(file => {
   vm.runInContext(fs.readFileSync(file, "utf8"), context, {filename:file});
 });
 
@@ -28,7 +28,7 @@ if(hub){
     activity.rounds.forEach(round => {
       if(roundIds.has(round.id)) errors.push(`${activity.id} duplicate round id ${round.id}`);
       roundIds.add(round.id);
-      if(!round.cards && !round.items && !round.concepts) errors.push(`${activity.id}/${round.id} has no cards, items, or concepts`);
+      if(!round.cards && !round.items && !round.concepts && !round.questionCount) errors.push(`${activity.id}/${round.id} has no cards, items, concepts, or question count`);
     });
   });
   const sorted = hub.activities.slice().sort((a,b) => a.order - b.order);
@@ -36,6 +36,29 @@ if(hub){
     if(idx && sorted[idx - 1].order === activity.order) errors.push(`Duplicate order ${activity.order}`);
   });
 }
+
+const units = context.window.DOMAIN1_REINFORCEMENT_UNITS || [];
+const requiredItemFields = ["id","task","objective","type","stem","options","correctAnswers","explanation","decidingClue","closestDistractor","whyClosestDistractorIsWrong","sourceReference"];
+const unitIds = new Set();
+units.forEach(unit => {
+  if(unitIds.has(unit.id)) errors.push(`Duplicate reinforcement unit id: ${unit.id}`);
+  unitIds.add(unit.id);
+  ["id","title","objectives","rapidReview","guidedExamples","practice","checkpoint","masteryPercent","relatedActivityId"].forEach(field => {
+    if(unit[field] === undefined || unit[field] === null) errors.push(`${unit.id || "(no unit)"} missing ${field}`);
+  });
+  if(!unit.objectives || !unit.objectives.length) errors.push(`${unit.id} has no objectives`);
+  if(unit.id === "domain1-inference" && unit.practice.length < 16) errors.push("Inference unit needs at least 16 practice scenarios");
+  if(unit.id === "domain1-aws-services" && unit.practice.length < 20) errors.push("Service unit needs at least 20 practice scenarios");
+  if(unit.id === "domain1-reinforcement-checkpoint" && unit.checkpoint.length !== 20) errors.push("Mixed checkpoint needs exactly 20 questions");
+  (unit.practice || []).concat(unit.checkpoint || []).forEach(item => {
+    requiredItemFields.forEach(field => {
+      if(item[field] === undefined || item[field] === null || item[field] === "") errors.push(`${item.id || "(no item)"} missing ${field}`);
+    });
+    if(!unit.objectives.includes(item.objective) && unit.id !== "domain1-reinforcement-checkpoint") errors.push(`${item.id} objective ${item.objective} is outside ${unit.id}`);
+    if(!Array.isArray(item.correctAnswers) || !item.correctAnswers.length) errors.push(`${item.id} has no correct answer`);
+    if(!Array.isArray(item.options) || item.options.length < 2) errors.push(`${item.id} has too few options`);
+  });
+});
 
 if(errors.length){
   console.error(errors.join("\n"));

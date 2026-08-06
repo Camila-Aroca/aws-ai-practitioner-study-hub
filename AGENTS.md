@@ -9,6 +9,7 @@
 - `index.html` is the single Study Hub entry point.
 - `app.js` owns hash routing, dashboard/domain/activity rendering, shared progress, and the card engine.
 - `data/study-hub.js` is the central registry. Navigation must be generated from it, not hard-coded elsewhere.
+- `data/exams/domain1-exam-config.js` and `data/exams/domain1-question-bank.js` contain the simulated exam blueprint and questions.
 - `data/domain1.js` preserves the previous Domain 1 Task 1.1/1.2 content.
 - `data/legacy-activities.js` preserves extracted data from standalone HTML files.
 - `legacy/` keeps original source activities for reference only.
@@ -32,6 +33,7 @@ Run:
 ```sh
 node validate-data.js
 node validate-hub.js
+node validate-exam.js
 node --check app.js
 ```
 

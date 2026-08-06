@@ -20,9 +20,12 @@ Then open `http://127.0.0.1:8080/index.html#/home`.
 - `data/domain1.js` - Domain 1 Task 1.1 and 1.2 round content.
 - `data/legacy-activities.js` - extracted round data from the migrated standalone HTML activities.
 - `data/study-hub.js` - domain list and central activity registry.
+- `data/exams/domain1-exam-config.js` - simulated exam settings and objective blueprint.
+- `data/exams/domain1-question-bank.js` - validated Domain 1 simulated exam questions.
 - `legacy/` - original standalone HTML files retained as source references.
 - `validate-data.js` - validates the original Domain 1 round data.
 - `validate-hub.js` - validates hub registry integrity.
+- `validate-exam.js` - validates the simulated exam question bank.
 
 ## Activity Registry
 
@@ -38,6 +41,8 @@ aif-c01-study-hub-progress
 
 The hub tracks last opened activity, round attempts, best score, most recent score, completion, mastery, reveal usage, and completion date. Old progress from `aif-c01-domain1-card-match-progress-v1` is migrated when available.
 
+The Domain 1 Simulated Exam stores active attempts and the latest ten completed attempts in the same progress object. It preserves selected question IDs, shuffled option order, answers, flagged questions, mode, and timer state across refreshes.
+
 Use **Reset progress** in the top bar to clear local progress with confirmation.
 
 ## Adding Content
@@ -51,5 +56,6 @@ To add a new domain or objective, add the domain metadata if needed, then regist
 ```sh
 node validate-data.js
 node validate-hub.js
+node validate-exam.js
 node --check app.js
 ```
