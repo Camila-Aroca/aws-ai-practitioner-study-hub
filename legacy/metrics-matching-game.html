@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Metrics Card Match — AIF-C01 objective 1.3.6</title>
+<style>
+:root{
+  --garnet:#4E0A0B;
+  --garnet-soft:#7A2A29;
+  --ink:#1C1512;
+  --parchment:#F2EEE8;
+  --card:#FBF9F6;
+  --khaki:#9DAD71;
+  --khaki-deep:#5F7040;
+  --rose:#E38792;
+  --brass:#A88A4A;
+  --rule:#D9D0C5;
+
+  --display:'Iowan Old Style','Palatino Linotype',Palatino,'Book Antiqua',Georgia,serif;
+  --body:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,monospace;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--parchment);
+  color:var(--ink);
+  font-family:var(--body);
+  font-size:16px;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  padding:0 0 4rem;
+}
+
+/* ---------------------------------------------------------- masthead --- */
+.masthead{
+  border-bottom:2px solid var(--garnet);
+  background:var(--parchment);
+  position:sticky; top:0; z-index:50;
+}
+.masthead-inner{
+  max-width:1180px; margin:0 auto;
+  padding:1.1rem 1.5rem .9rem;
+  display:flex; flex-wrap:wrap; align-items:baseline; gap:.6rem 1.4rem;
+}
+.eyebrow{
+  font-family:var(--mono); font-size:.66rem; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--brass); margin:0 0 .15rem;
+}
+.masthead h1{
+  font-family:var(--display); font-size:1.55rem; font-weight:600;
+  color:var(--garnet); margin:0; letter-spacing:-.01em;
+}
+.masthead .title-block{flex:1 1 260px}
+.tally{
+  font-family:var(--mono); font-size:.78rem; letter-spacing:.06em;
+  color:var(--garnet); border:1px solid var(--rule); background:var(--card);
+  padding:.4rem .7rem; white-space:nowrap;
+}
+.tally b{font-weight:700}
+
+/* ------------------------------------------------------------- rounds --- */
+.rounds{
+  max-width:1180px; margin:0 auto; padding:1.1rem 1.5rem 0;
+  display:flex; gap:.5rem; flex-wrap:wrap;
+}
+.round-tab{
+  font-family:var(--body); font-size:.82rem; background:transparent;
+  border:1px solid var(--rule); color:var(--garnet-soft);
+  padding:.45rem .9rem; cursor:pointer; border-radius:2px;
+  transition:background .15s,color .15s,border-color .15s;
+}
+.round-tab:hover{border-color:var(--garnet-soft)}
+.round-tab[aria-selected="true"]{background:var(--garnet);border-color:var(--garnet);color:#fff}
+.round-tab .tab-count{font-family:var(--mono);font-size:.7rem;opacity:.7;margin-left:.4rem}
+.round-tab:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+
+/* --------------------------------------------------------------- shell --- */
+main{max-width:1180px;margin:0 auto;padding:1.4rem 1.5rem 0}
+.round-intro{font-size:.9rem;color:#5A4E47;margin:0 0 1.4rem;max-width:66ch}
+
+.bank-head{
+  display:flex; align-items:baseline; justify-content:space-between;
+  gap:1rem; border-bottom:1px solid var(--rule);
+  padding-bottom:.4rem; margin-bottom:.9rem;
+}
+.bank-head h2{
+  font-family:var(--mono); font-size:.68rem; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--brass); font-weight:500; margin:0;
+}
+.hint{font-size:.76rem;color:#8A7D74}
+
+.bank{
+  display:flex; flex-wrap:wrap; gap:.65rem; min-height:5.5rem;
+  padding:.9rem; background:rgba(255,255,255,.5);
+  border:1px dashed var(--rule); margin-bottom:2.2rem; align-content:flex-start;
+}
+.bank.is-target{border-color:var(--garnet-soft);background:rgba(227,135,146,.08)}
+.bank-empty{font-size:.82rem;color:#9A8E85;font-style:italic;margin:auto}
+
+/* --------------------------------------------------------------- cards --- */
+.card{
+  font-family:var(--body); font-size:.83rem; line-height:1.42; text-align:left;
+  background:var(--card); border:1px solid var(--rule);
+  border-left:3px solid var(--rose); border-radius:2px;
+  padding:.6rem .75rem; max-width:19rem; cursor:grab;
+  box-shadow:0 1px 0 rgba(78,10,11,.06);
+  transition:transform .14s ease,box-shadow .14s ease,border-color .14s ease;
+  color:var(--ink); display:block;
+}
+.card:hover{transform:translateY(-2px);box-shadow:0 4px 10px rgba(78,10,11,.11)}
+.card:focus-visible{outline:2px solid var(--garnet);outline-offset:2px}
+.card.is-held{
+  border-color:var(--garnet); border-left-color:var(--garnet);
+  box-shadow:0 0 0 2px rgba(78,10,11,.22),0 6px 14px rgba(78,10,11,.16);
+  transform:translateY(-2px);
+}
+.card.is-dragging{opacity:.4}
+.card[data-kind="formula"]{border-left-color:var(--brass);font-family:var(--mono);font-size:.78rem}
+.card[data-kind="when"]{border-left-color:var(--khaki-deep)}
+.card[data-kind="use"]{border-left-color:var(--brass)}
+
+/* --------------------------------------------------------------- board --- */
+.board{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:1.1rem}
+.board.wide{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.board.pair{grid-template-columns:repeat(auto-fit,minmax(340px,1fr))}
+
+.concept{
+  background:var(--card); border:1px solid var(--rule);
+  border-top:3px solid var(--garnet); border-radius:2px;
+  padding:0 0 .9rem; box-shadow:0 1px 0 rgba(78,10,11,.05);
+}
+.concept-head{padding:.8rem 1rem .55rem;border-bottom:1px solid var(--rule);margin-bottom:.8rem}
+.concept-index{
+  font-family:var(--mono); font-size:.66rem; letter-spacing:.14em;
+  color:var(--brass); display:block; margin-bottom:.2rem;
+}
+.concept-name{
+  font-family:var(--display); font-size:1.12rem; font-weight:600;
+  color:var(--garnet); margin:0; line-height:1.25;
+}
+.concept-sub{font-size:.76rem;color:#8A7D74;margin:.25rem 0 0;line-height:1.35}
+
+.slot-wrap{padding:0 1rem .1rem}
+.slot-label{
+  font-family:var(--mono); font-size:.62rem; letter-spacing:.14em;
+  text-transform:uppercase; color:#9A8E85; display:block; margin:.55rem 0 .3rem;
+}
+.slot{
+  min-height:4.2rem; border:1px dashed var(--rule); border-radius:2px;
+  padding:.35rem; display:flex;
+  transition:border-color .14s,background .14s;
+  background:rgba(242,238,232,.55);
+}
+.slot.is-target{border-color:var(--garnet-soft);background:rgba(227,135,146,.1)}
+.slot .card{max-width:none;width:100%;cursor:pointer;box-shadow:none}
+.slot .card:hover{transform:none;box-shadow:0 2px 6px rgba(78,10,11,.1)}
+.slot.is-correct{border-style:solid;border-color:var(--khaki);background:rgba(157,173,113,.13)}
+.slot.is-correct .card{border-color:var(--khaki);border-left-color:var(--khaki-deep);background:#fff}
+.slot.is-wrong{border-style:solid;border-color:var(--rose);background:rgba(227,135,146,.14);animation:nudge .3s ease}
+.slot.is-wrong .card{border-color:var(--rose);border-left-color:var(--garnet)}
+
+/* ------------------------------------------------------------- buckets --- */
+.dropzone{
+  margin:0 1rem; min-height:4.6rem; padding:.5rem;
+  border:1px dashed var(--rule); border-radius:2px;
+  background:rgba(242,238,232,.55);
+  display:flex; flex-direction:column; gap:.45rem;
+  transition:border-color .14s,background .14s;
+}
+.dropzone.is-target{border-color:var(--garnet-soft);background:rgba(227,135,146,.1)}
+.dropzone .card{max-width:none;width:100%;cursor:pointer;box-shadow:none;font-size:.8rem}
+.dropzone .card:hover{transform:none;box-shadow:0 2px 6px rgba(78,10,11,.1)}
+.dropzone-empty{font-size:.76rem;color:#A99D94;font-style:italic;margin:auto;text-align:center}
+.card.is-correct{border-color:var(--khaki);border-left-color:var(--khaki-deep);background:#fff}
+.card.is-wrong{border-color:var(--rose);border-left-color:var(--garnet);background:rgba(227,135,146,.1)}
+
+.mark{
+  font-family:var(--mono); font-size:.68rem; letter-spacing:.08em;
+  margin-top:.28rem; min-height:1rem; display:block;
+}
+.mark.ok{color:var(--khaki-deep)}
+.mark.no{color:var(--garnet)}
+
+@keyframes nudge{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+
+/* ------------------------------------------------------------ controls --- */
+.controls{
+  max-width:1180px; margin:2.2rem auto 0; padding:1.2rem 1.5rem 0;
+  border-top:1px solid var(--rule); display:flex; flex-wrap:wrap;
+  gap:.6rem; align-items:center;
+}
+button.act{
+  font-family:var(--body); font-size:.84rem; padding:.55rem 1.1rem;
+  border-radius:2px; border:1px solid var(--garnet);
+  background:var(--garnet); color:#fff; cursor:pointer;
+  transition:background .15s,color .15s;
+}
+button.act:hover{background:var(--garnet-soft);border-color:var(--garnet-soft)}
+button.act.ghost{background:transparent;color:var(--garnet)}
+button.act.ghost:hover{background:rgba(78,10,11,.07);color:var(--garnet)}
+button.act:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+
+.verdict{
+  max-width:1180px; margin:1.1rem auto 0; padding:0 1.5rem;
+  font-size:.9rem; min-height:1.5rem; color:var(--garnet);
+}
+.verdict.win{color:var(--khaki-deep);font-weight:600}
+
+.footnote{
+  max-width:1180px; margin:2.4rem auto 0; padding:1.1rem 1.5rem 0;
+  border-top:1px solid var(--rule); font-size:.82rem; color:#6B5F57;
+}
+.footnote strong{color:var(--garnet)}
+
+@media (max-width:640px){
+  .masthead h1{font-size:1.25rem}
+  main,.controls,.rounds,.verdict,.footnote{padding-left:1rem;padding-right:1rem}
+  .card{max-width:none;width:100%}
+  .board,.board.wide,.board.pair{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms !important;transition-duration:.01ms !important}
+}
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="masthead-inner">
+    <div class="title-block">
+      <p class="eyebrow">AIF-C01 · Domain 1 · Objective 1.3.6</p>
+      <h1>Metrics Card Match</h1>
+    </div>
+    <div class="tally" id="tally">Placed <b id="placedCount">0</b> / <b id="totalCount">18</b></div>
+  </div>
+</header>
+
+<nav class="rounds" role="tablist" aria-label="Rounds">
+  <button class="round-tab" role="tab" aria-selected="true"  data-round="model">Model metrics <span class="tab-count">18</span></button>
+  <button class="round-tab" role="tab" aria-selected="false" data-round="business">Business metrics <span class="tab-count">12</span></button>
+  <button class="round-tab" role="tab" aria-selected="false" data-round="scenario">Which metric fits? <span class="tab-count">9</span></button>
+  <button class="round-tab" role="tab" aria-selected="false" data-round="family">Model or business? <span class="tab-count">12</span></button>
+</nav>
+
+<main>
+  <p class="round-intro" id="roundIntro"></p>
+
+  <div class="bank-head">
+    <h2>Loose cards</h2>
+    <span class="hint">Click a card, then click where it goes. Or drag it. Click a placed card to send it back.</span>
+  </div>
+  <div class="bank" id="bank" aria-label="Unplaced cards"></div>
+
+  <div class="board" id="board"></div>
+</main>
+
+<div class="controls">
+  <button class="act" id="btnCheck">Check answers</button>
+  <button class="act ghost" id="btnShuffle">Shuffle cards</button>
+  <button class="act ghost" id="btnClear">Clear board</button>
+  <button class="act ghost" id="btnReveal">Show me the answers</button>
+</div>
+
+<p class="verdict" id="verdict"></p>
+
+<div class="footnote" id="footnote"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  const ROUNDS = {
+    /* ------------------------------------------------ 1. model metrics */
+    model:{
+      mode:"slots",
+      intro:"Six metrics, each with a plain-language meaning, a formula and the situation that calls for it. You are never asked to calculate these on the exam, so the third column is the one that actually earns marks. Place the formulas quickly and spend your attention on 'choose it when'.",
+      footnote:"<strong>Memory hook:</strong> precision protects the innocent, recall catches the guilty. Precision is about not wrongly flagging things. Recall is about not letting things slip through. Read the scenario for which mistake hurts more, then choose.",
+      slotTypes:[
+        {key:"means",   label:"Plain-language meaning"},
+        {key:"formula", label:"Formula"},
+        {key:"when",    label:"Choose it when…"}
+      ],
+      concepts:[
+        {id:"acc", name:"Accuracy",
+          means:"Of all predictions, how many were right?",
+          formula:"(TP + TN) / total",
+          when:"Classes are roughly balanced and all errors cost about the same."},
+        {id:"pre", name:"Precision",
+          means:"Of the items we flagged as positive, how many really were?",
+          formula:"TP / (TP + FP)",
+          when:"A false positive is expensive: blocking a legitimate transaction, wrongly flagging a document."},
+        {id:"rec", name:"Recall (sensitivity)",
+          means:"Of all the real positives, how many did we catch?",
+          formula:"TP / (TP + FN)",
+          when:"A false negative is expensive: a missed tumour, a missed fraud, a missed safety defect."},
+        {id:"f1",  name:"F1 score",
+          means:"The harmonic mean of precision and recall, in one number.",
+          formula:"2 × (P × R) / (P + R)",
+          when:"You need a single balanced figure, especially with imbalanced classes."},
+        {id:"auc", name:"AUC-ROC",
+          means:"How well the model separates the classes across all thresholds.",
+          formula:"Area under the ROC curve",
+          when:"Comparing models independently of a chosen threshold."},
+        {id:"rms", name:"RMSE / MAE",
+          means:"Average size of the numeric error.",
+          formula:"Root mean squared error / mean absolute error",
+          when:"Regression and forecasting problems."}
+      ]
+    },
+
+    /* --------------------------------------------- 2. business metrics */
+    business:{
+      mode:"slots",
+      intro:"The other family. These measure whether the system is worth operating rather than whether the model is statistically sound. The exam tests that you know they are a separate family, and that a model can score well on one while failing on the other.",
+      footnote:"<strong>Andes Retail, judged twice:</strong> the data science team reports an F1 of 0.81 on the churn model. The commercial team reports $340,000 in retained revenue against $95,000 of cost, an ROI of 258%. Both figures are correct, both are needed, and neither substitutes for the other.",
+      slotTypes:[
+        {key:"means", label:"What it measures"},
+        {key:"use",   label:"Typical use"}
+      ],
+      concepts:[
+        {id:"roi", name:"Return on investment (ROI)",
+          means:"Net benefit relative to total cost of the initiative.",
+          use:"Justifying the project to a sponsor."},
+        {id:"cpu", name:"Cost per user / per interaction",
+          means:"Total operating cost divided by usage.",
+          use:"Judging whether a GenAI assistant is economically viable at scale."},
+        {id:"dev", name:"Development cost",
+          means:"One-off build cost: people, data, labelling, experimentation.",
+          use:"Comparing build against buy."},
+        {id:"fbk", name:"Customer feedback",
+          means:"Satisfaction scores, thumbs up or down, complaint volume.",
+          use:"Detecting quality problems that offline metrics miss."},
+        {id:"cvr", name:"Conversion rate / average revenue per user",
+          means:"Commercial effect of the model on behaviour.",
+          use:"Recommendation and personalisation systems."},
+        {id:"clv", name:"Customer lifetime value",
+          means:"Long-run value of a customer relationship.",
+          use:"Justifying retention and personalisation investment."}
+      ]
+    },
+
+    /* ------------------------------------------------- 3. scenario sort */
+    scenario:{
+      mode:"buckets",
+      intro:"This is the round that resembles the actual exam. Each card is a scenario; drop it under the metric it calls for. Notice how rarely accuracy is the right answer, and notice that two scenarios can look similar while pointing in opposite directions.",
+      footnote:"<strong>The accuracy trap:</strong> if 0.2% of transactions are fraudulent, a model that predicts \"not fraud\" every single time is 99.8% accurate and completely useless. Whenever a stem mentions a rare event, imbalanced classes or a small positive class, accuracy is the wrong metric and is deliberately offered as a distractor.",
+      targets:[
+        {id:"acc", name:"Accuracy",           sub:"Balanced classes, symmetric error cost"},
+        {id:"pre", name:"Precision",          sub:"False positives are the expensive error"},
+        {id:"rec", name:"Recall",             sub:"False negatives are the expensive error"},
+        {id:"f1",  name:"F1 score",           sub:"One balanced number, imbalanced classes"},
+        {id:"auc", name:"AUC-ROC",            sub:"Comparing models across thresholds"},
+        {id:"rms", name:"RMSE / MAE",         sub:"Numeric prediction"}
+      ],
+      items:[
+        {id:"s1", target:"rec", text:"A hospital screens patients for a condition. Missing a genuinely ill patient is far more damaging than calling in a healthy one unnecessarily."},
+        {id:"s2", target:"rec", text:"A manufacturer must not let a safety-critical defect reach a customer, even if that means re-inspecting units that were fine."},
+        {id:"s3", target:"pre", text:"Blocking a legitimate customer payment causes complaints and lost sales. Letting a small amount of fraud through costs the bank less."},
+        {id:"s4", target:"pre", text:"A legal team flags documents for privileged review. Every wrongly flagged document consumes expensive lawyer hours."},
+        {id:"s5", target:"f1",  text:"Classes are heavily imbalanced and leadership wants a single figure that balances both kinds of error."},
+        {id:"s6", target:"auc", text:"Two candidate models must be compared before anyone has decided what the decision threshold will be."},
+        {id:"s7", target:"rms", text:"Forecasting next quarter's weekly shipment volume for a logistics network."},
+        {id:"s8", target:"rms", text:"Predicting the expected repair cost of an insurance claim, in pesos."},
+        {id:"s9", target:"acc", text:"A roughly 50/50 dataset where a false positive and a false negative cost the business about the same."}
+      ]
+    },
+
+    /* -------------------------------------------------- 4. which family */
+    family:{
+      mode:"buckets",
+      intro:"Twelve metrics, two families. This is a short round and the fastest way to check that you have not blurred the line. If it is measured against ground-truth labels it is a model metric; if it is measured in money, users or satisfaction it is a business metric.",
+      footnote:"<strong>Why this matters on the exam:</strong> questions frequently list metrics from both families in the same set of options. Knowing which family the question is asking about eliminates half the choices before you evaluate any of them.",
+      targets:[
+        {id:"model",    name:"Model performance metric", sub:"Measured against ground-truth labels"},
+        {id:"business", name:"Business metric",          sub:"Measured in money, users or satisfaction"}
+      ],
+      items:[
+        {id:"f01", target:"model",    text:"F1 score"},
+        {id:"f02", target:"business", text:"Return on investment (ROI)"},
+        {id:"f03", target:"model",    text:"Recall"},
+        {id:"f04", target:"business", text:"Cost per interaction"},
+        {id:"f05", target:"model",    text:"AUC-ROC"},
+        {id:"f06", target:"business", text:"Customer lifetime value"},
+        {id:"f07", target:"model",    text:"RMSE"},
+        {id:"f08", target:"business", text:"Conversion rate"},
+        {id:"f09", target:"model",    text:"Precision"},
+        {id:"f10", target:"business", text:"Development cost"},
+        {id:"f11", target:"model",    text:"Accuracy"},
+        {id:"f12", target:"business", text:"Customer feedback"}
+      ]
+    }
+  };
+
+  const bank       = document.getElementById("bank");
+  const board      = document.getElementById("board");
+  const verdict    = document.getElementById("verdict");
+  const roundIntro = document.getElementById("roundIntro");
+  const footnote   = document.getElementById("footnote");
+  const placedEl   = document.getElementById("placedCount");
+  const totalEl    = document.getElementById("totalCount");
+
+  let currentRound = "model";
+  let held = null;
+  let checked = false;
+
+  function shuffle(arr){
+    const a = arr.slice();
+    for(let i=a.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [a[i],a[j]] = [a[j],a[i]];
+    }
+    return a;
+  }
+  function R(){ return ROUNDS[currentRound]; }
+  function isBuckets(){ return R().mode === "buckets"; }
+
+  function allCards(){
+    const r = R();
+    if(r.mode === "buckets"){
+      return r.items.map(it=>({ id:it.id, kind:"scenario", text:it.text }));
+    }
+    const out = [];
+    r.concepts.forEach(c=>{
+      r.slotTypes.forEach(t=>{
+        out.push({ id:c.id+"|"+t.key, kind:t.key, text:c[t.key] });
+      });
+    });
+    return out;
+  }
+  function cardById(id){ return allCards().find(c=>c.id===id) || null; }
+
+  function expectedTargetFor(cardId){
+    const r = R();
+    if(r.mode !== "buckets") return null;
+    const it = r.items.find(i=>i.id===cardId);
+    return it ? it.target : null;
+  }
+
+  /* --------------------------------------------------------- card build */
+  function makeCardEl(card){
+    const el = document.createElement("button");
+    el.type = "button";
+    el.className = "card";
+    el.dataset.cardId = card.id;
+    el.dataset.kind = card.kind;
+    el.draggable = true;
+    el.textContent = card.text;
+
+    el.addEventListener("click", function(ev){
+      ev.stopPropagation();
+      const p = el.parentElement;
+      if(p && (p.classList.contains("slot") || p.classList.contains("dropzone"))){
+        returnToBank(el);
+      }else{
+        toggleHold(card.id, el);
+      }
+    });
+    el.addEventListener("dragstart", function(ev){
+      held = card.id;
+      el.classList.add("is-dragging");
+      try{ ev.dataTransfer.setData("text/plain", card.id); }catch(e){}
+      ev.dataTransfer.effectAllowed = "move";
+    });
+    el.addEventListener("dragend", function(){
+      el.classList.remove("is-dragging");
+      clearHeldStyles();
+      held = null;
+    });
+    return el;
+  }
+
+  function clearHeldStyles(){
+    document.querySelectorAll(".card.is-held").forEach(c=>c.classList.remove("is-held"));
+  }
+  function toggleHold(id, el){
+    if(held === id){ held=null; clearHeldStyles(); return; }
+    held = id; clearHeldStyles(); el.classList.add("is-held");
+  }
+
+  /* ------------------------------------------------------------- render */
+  function render(){
+    const r = R();
+    roundIntro.textContent = r.intro;
+    footnote.innerHTML = r.footnote;
+    board.className = "board" + (r.mode === "buckets" ? (r.targets.length <= 2 ? " pair" : " wide") : "");
+    totalEl.textContent = allCards().length;
+
+    board.innerHTML = "";
+    if(r.mode === "buckets") renderBuckets(r); else renderSlots(r);
+
+    fillBank(allCards());
+    clearAllMarks();
+    updateTally();
+  }
+
+  function renderSlots(r){
+    r.concepts.forEach((c,i)=>{
+      const wrap = document.createElement("section");
+      wrap.className = "concept";
+      wrap.appendChild(conceptHead(i, c.name, null));
+
+      r.slotTypes.forEach(t=>{
+        const sw = document.createElement("div");
+        sw.className = "slot-wrap";
+
+        const lab = document.createElement("span");
+        lab.className = "slot-label";
+        lab.textContent = t.label;
+
+        const slot = document.createElement("div");
+        slot.className = "slot";
+        slot.dataset.expects = c.id+"|"+t.key;
+        slot.tabIndex = 0;
+        slot.setAttribute("role","group");
+        slot.setAttribute("aria-label", c.name+" — "+t.label);
+
+        slot.addEventListener("click", function(){ placeIntoSlot(slot); });
+        slot.addEventListener("keydown", function(ev){
+          if(ev.key==="Enter"||ev.key===" "){ ev.preventDefault(); placeIntoSlot(slot); }
+        });
+        wireDrop(slot, function(){ placeIntoSlot(slot); });
+
+        const mark = document.createElement("span");
+        mark.className = "mark";
+
+        sw.appendChild(lab); sw.appendChild(slot); sw.appendChild(mark);
+        wrap.appendChild(sw);
+      });
+      board.appendChild(wrap);
+    });
+  }
+
+  function renderBuckets(r){
+    r.targets.forEach((t,i)=>{
+      const wrap = document.createElement("section");
+      wrap.className = "concept";
+      wrap.appendChild(conceptHead(i, t.name, t.sub));
+
+      const zone = document.createElement("div");
+      zone.className = "dropzone";
+      zone.dataset.bucket = t.id;
+      zone.tabIndex = 0;
+      zone.setAttribute("role","group");
+      zone.setAttribute("aria-label", t.name);
+
+      zone.addEventListener("click", function(){ placeIntoBucket(zone); });
+      zone.addEventListener("keydown", function(ev){
+        if(ev.key==="Enter"||ev.key===" "){ ev.preventDefault(); placeIntoBucket(zone); }
+      });
+      wireDrop(zone, function(){ placeIntoBucket(zone); });
+
+      wrap.appendChild(zone);
+
+      const mark = document.createElement("span");
+      mark.className = "mark";
+      mark.style.padding = "0 1rem";
+      wrap.appendChild(mark);
+
+      board.appendChild(wrap);
+      refreshZoneEmpty(zone);
+    });
+  }
+
+  function conceptHead(i, name, sub){
+    const head = document.createElement("div");
+    head.className = "concept-head";
+    const idx = document.createElement("span");
+    idx.className = "concept-index";
+    idx.textContent = String(i+1).padStart(2,"0");
+    const nm = document.createElement("h3");
+    nm.className = "concept-name";
+    nm.textContent = name;
+    head.appendChild(idx); head.appendChild(nm);
+    if(sub){
+      const s = document.createElement("p");
+      s.className = "concept-sub";
+      s.textContent = sub;
+      head.appendChild(s);
+    }
+    return head;
+  }
+
+  function wireDrop(node, onDrop){
+    node.addEventListener("dragover", function(ev){ ev.preventDefault(); node.classList.add("is-target"); });
+    node.addEventListener("dragleave", function(){ node.classList.remove("is-target"); });
+    node.addEventListener("drop", function(ev){
+      ev.preventDefault();
+      node.classList.remove("is-target");
+      let id="";
+      try{ id = ev.dataTransfer.getData("text/plain"); }catch(e){}
+      if(!id) id = held;
+      if(id){ held = id; onDrop(); }
+    });
+  }
+
+  function fillBank(cards){
+    bank.innerHTML = "";
+    shuffle(cards).forEach(c=> bank.appendChild(makeCardEl(c)) );
+    refreshBankEmpty();
+  }
+  function refreshBankEmpty(){
+    const has = bank.querySelector(".card");
+    const msg = bank.querySelector(".bank-empty");
+    if(!has && !msg){
+      const p = document.createElement("p");
+      p.className = "bank-empty";
+      p.textContent = "All cards placed. Check your answers below.";
+      bank.appendChild(p);
+    }
+    if(has && msg) msg.remove();
+  }
+  function refreshZoneEmpty(zone){
+    const has = zone.querySelector(".card");
+    const msg = zone.querySelector(".dropzone-empty");
+    if(!has && !msg){
+      const p = document.createElement("p");
+      p.className = "dropzone-empty";
+      p.textContent = "Drop scenarios here";
+      zone.appendChild(p);
+    }
+    if(has && msg) msg.remove();
+  }
+  function refreshAllZones(){ board.querySelectorAll(".dropzone").forEach(refreshZoneEmpty); }
+
+  /* ---------------------------------------------------------- placement */
+  function heldEl(){
+    if(!held) return null;
+    return document.querySelector('.card[data-card-id="'+CSS.escape(held)+'"]');
+  }
+
+  function placeIntoSlot(slot){
+    const el = heldEl();
+    if(!el) return;
+    const existing = slot.querySelector(".card");
+    if(existing && existing !== el) bank.appendChild(existing);
+    slot.appendChild(el);
+    el.classList.remove("is-held");
+    held = null;
+    clearSlotState(slot);
+    refreshBankEmpty(); updateTally();
+    if(checked) clearAllMarks();
+  }
+
+  function placeIntoBucket(zone){
+    const el = heldEl();
+    if(!el) return;
+    const prev = el.parentElement;
+    zone.appendChild(el);
+    el.classList.remove("is-held","is-correct","is-wrong");
+    held = null;
+    if(prev && prev.classList.contains("dropzone")) refreshZoneEmpty(prev);
+    refreshZoneEmpty(zone);
+    refreshBankEmpty(); updateTally();
+    if(checked) clearAllMarks();
+  }
+
+  function returnToBank(el){
+    const parent = el.parentElement;
+    bank.appendChild(el);
+    el.classList.remove("is-correct","is-wrong");
+    if(parent){
+      if(parent.classList.contains("slot")) clearSlotState(parent);
+      if(parent.classList.contains("dropzone")) refreshZoneEmpty(parent);
+    }
+    held = null; clearHeldStyles();
+    refreshBankEmpty(); updateTally();
+    if(checked) clearAllMarks();
+  }
+
+  function clearSlotState(slot){
+    slot.classList.remove("is-correct","is-wrong");
+    const m = slot.parentElement.querySelector(".mark");
+    if(m){ m.textContent=""; m.className="mark"; }
+  }
+
+  function clearAllMarks(){
+    checked = false;
+    board.querySelectorAll(".slot").forEach(clearSlotState);
+    board.querySelectorAll(".mark").forEach(m=>{ m.textContent=""; m.className="mark"; if(m.parentElement.classList.contains("concept")) m.style.padding="0 1rem"; });
+    board.querySelectorAll(".card").forEach(c=>c.classList.remove("is-correct","is-wrong"));
+    verdict.textContent = ""; verdict.className = "verdict";
+  }
+
+  function updateTally(){
+    const n = board.querySelectorAll(".slot .card, .dropzone .card").length;
+    placedEl.textContent = n;
+  }
+
+  /* ------------------------------------------------------------- check */
+  function check(){
+    return isBuckets() ? checkBuckets() : checkSlots();
+  }
+
+  function checkSlots(){
+    const slots = Array.from(board.querySelectorAll(".slot"));
+    let right = 0, filled = 0;
+    slots.forEach(slot=>{
+      const el = slot.querySelector(".card");
+      const mark = slot.parentElement.querySelector(".mark");
+      slot.classList.remove("is-correct","is-wrong");
+      if(!el){ mark.textContent=""; mark.className="mark"; return; }
+      filled++;
+      if(el.dataset.cardId === slot.dataset.expects){
+        right++; slot.classList.add("is-correct");
+        mark.textContent="Correct"; mark.className="mark ok";
+      }else{
+        slot.classList.add("is-wrong");
+        mark.textContent="Not this one — click it to send it back";
+        mark.className="mark no";
+      }
+    });
+    finishCheck(right, slots.length, filled);
+  }
+
+  function checkBuckets(){
+    const zones = Array.from(board.querySelectorAll(".dropzone"));
+    let right = 0, filled = 0;
+    const total = allCards().length;
+
+    zones.forEach(zone=>{
+      const cards = Array.from(zone.querySelectorAll(".card"));
+      let zoneRight = 0;
+      cards.forEach(el=>{
+        filled++;
+        const want = expectedTargetFor(el.dataset.cardId);
+        el.classList.remove("is-correct","is-wrong");
+        if(want === zone.dataset.bucket){ right++; zoneRight++; el.classList.add("is-correct"); }
+        else{ el.classList.add("is-wrong"); }
+      });
+      const mark = zone.parentElement.querySelector(".mark");
+      if(!cards.length){ mark.textContent=""; mark.className="mark"; }
+      else if(zoneRight === cards.length){
+        mark.textContent = "All " + cards.length + " correct";
+        mark.className = "mark ok";
+      }else{
+        mark.textContent = zoneRight + " of " + cards.length + " correct";
+        mark.className = "mark no";
+      }
+      mark.style.padding = "0 1rem";
+    });
+    finishCheck(right, total, filled);
+  }
+
+  function finishCheck(right, total, filled){
+    checked = true;
+    if(filled === 0){
+      verdict.textContent = "Place some cards first, then check.";
+      verdict.className = "verdict";
+    }else if(right === total){
+      verdict.textContent = "All " + total + " correct. Nothing left to fix in this round.";
+      verdict.className = "verdict win";
+    }else{
+      verdict.textContent = right + " of " + total + " correct. The marked cards are in the wrong place — click one to send it back.";
+      verdict.className = "verdict";
+    }
+  }
+
+  /* ----------------------------------------------------------- actions */
+  function clearBoard(){
+    board.querySelectorAll(".slot .card, .dropzone .card").forEach(el=>{
+      el.classList.remove("is-correct","is-wrong");
+      bank.appendChild(el);
+    });
+    board.querySelectorAll(".slot").forEach(clearSlotState);
+    refreshAllZones();
+    clearAllMarks();
+    refreshBankEmpty(); updateTally();
+  }
+
+  function reveal(){
+    clearBoard();
+    if(isBuckets()){
+      board.querySelectorAll(".dropzone").forEach(zone=>{
+        R().items.filter(it=>it.target === zone.dataset.bucket).forEach(it=>{
+          const el = document.querySelector('.card[data-card-id="'+CSS.escape(it.id)+'"]');
+          if(el){ zone.appendChild(el); el.classList.add("is-correct"); }
+        });
+        const mark = zone.parentElement.querySelector(".mark");
+        mark.textContent = "Answer"; mark.className = "mark ok"; mark.style.padding="0 1rem";
+      });
+      refreshAllZones();
+    }else{
+      board.querySelectorAll(".slot").forEach(slot=>{
+        const el = document.querySelector('.card[data-card-id="'+CSS.escape(slot.dataset.expects)+'"]');
+        if(el){
+          slot.appendChild(el);
+          slot.classList.add("is-correct");
+          const m = slot.parentElement.querySelector(".mark");
+          m.textContent = "Answer"; m.className = "mark ok";
+        }
+      });
+    }
+    checked = true;
+    refreshBankEmpty(); updateTally();
+    verdict.textContent = "Answers shown. Clear the board and try it again from memory.";
+    verdict.className = "verdict";
+  }
+
+  /* ------------------------------------------------------------ wiring */
+  document.getElementById("btnCheck").addEventListener("click", check);
+  document.getElementById("btnClear").addEventListener("click", clearBoard);
+  document.getElementById("btnReveal").addEventListener("click", reveal);
+  document.getElementById("btnShuffle").addEventListener("click", function(){
+    const loose = Array.from(bank.querySelectorAll(".card"))
+      .map(el=>cardById(el.dataset.cardId)).filter(Boolean);
+    fillBank(loose);
+  });
+
+  bank.addEventListener("click", function(){ if(held){ clearHeldStyles(); held=null; } });
+  wireDrop(bank, function(){
+    const el = heldEl();
+    if(!el) return;
+    const parent = el.parentElement;
+    bank.appendChild(el);
+    el.classList.remove("is-correct","is-wrong");
+    if(parent){
+      if(parent.classList.contains("slot")) clearSlotState(parent);
+      if(parent.classList.contains("dropzone")) refreshZoneEmpty(parent);
+    }
+    held = null;
+    refreshBankEmpty(); updateTally();
+  });
+
+  document.querySelectorAll(".round-tab").forEach(tab=>{
+    tab.addEventListener("click", function(){
+      document.querySelectorAll(".round-tab").forEach(t=>t.setAttribute("aria-selected","false"));
+      tab.setAttribute("aria-selected","true");
+      currentRound = tab.dataset.round;
+      held = null;
+      render();
+      window.scrollTo({top:0,behavior:"smooth"});
+    });
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

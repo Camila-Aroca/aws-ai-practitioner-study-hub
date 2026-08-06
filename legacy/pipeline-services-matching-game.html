@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pipeline Services Card Match — AIF-C01 objective 1.3.4</title>
+<style>
+:root{
+  --garnet:#4E0A0B;
+  --garnet-soft:#7A2A29;
+  --ink:#1C1512;
+  --parchment:#F2EEE8;
+  --card:#FBF9F6;
+  --khaki:#9DAD71;
+  --khaki-deep:#5F7040;
+  --rose:#E38792;
+  --brass:#A88A4A;
+  --rule:#D9D0C5;
+
+  --display:'Iowan Old Style','Palatino Linotype',Palatino,'Book Antiqua',Georgia,serif;
+  --body:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,monospace;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--parchment);
+  color:var(--ink);
+  font-family:var(--body);
+  font-size:16px;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  padding:0 0 4rem;
+}
+
+/* ---------------------------------------------------------- masthead --- */
+.masthead{
+  border-bottom:2px solid var(--garnet);
+  background:var(--parchment);
+  position:sticky; top:0; z-index:50;
+}
+.masthead-inner{
+  max-width:1180px; margin:0 auto;
+  padding:1.1rem 1.5rem .9rem;
+  display:flex; flex-wrap:wrap; align-items:baseline; gap:.6rem 1.4rem;
+}
+.eyebrow{
+  font-family:var(--mono); font-size:.66rem; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--brass); margin:0 0 .15rem;
+}
+.masthead h1{
+  font-family:var(--display); font-size:1.55rem; font-weight:600;
+  color:var(--garnet); margin:0; letter-spacing:-.01em;
+}
+.masthead .title-block{flex:1 1 260px}
+.tally{
+  font-family:var(--mono); font-size:.78rem; letter-spacing:.06em;
+  color:var(--garnet); border:1px solid var(--rule); background:var(--card);
+  padding:.4rem .7rem; white-space:nowrap;
+}
+.tally b{font-weight:700}
+
+/* ------------------------------------------------------------- rounds --- */
+.rounds{
+  max-width:1180px; margin:0 auto; padding:1.1rem 1.5rem 0;
+  display:flex; gap:.5rem; flex-wrap:wrap;
+}
+.round-tab{
+  font-family:var(--body); font-size:.82rem; background:transparent;
+  border:1px solid var(--rule); color:var(--garnet-soft);
+  padding:.45rem .9rem; cursor:pointer; border-radius:2px;
+  transition:background .15s,color .15s,border-color .15s;
+}
+.round-tab:hover{border-color:var(--garnet-soft)}
+.round-tab[aria-selected="true"]{background:var(--garnet);border-color:var(--garnet);color:#fff}
+.round-tab .tab-count{font-family:var(--mono);font-size:.7rem;opacity:.7;margin-left:.4rem}
+.round-tab:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+
+/* --------------------------------------------------------------- shell --- */
+main{max-width:1180px;margin:0 auto;padding:1.4rem 1.5rem 0}
+.round-intro{font-size:.9rem;color:#5A4E47;margin:0 0 1.4rem;max-width:68ch}
+
+.bank-head{
+  display:flex; align-items:baseline; justify-content:space-between;
+  gap:1rem; border-bottom:1px solid var(--rule);
+  padding-bottom:.4rem; margin-bottom:.9rem;
+}
+.bank-head h2{
+  font-family:var(--mono); font-size:.68rem; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--brass); font-weight:500; margin:0;
+}
+.hint{font-size:.76rem;color:#8A7D74}
+
+.bank{
+  display:flex; flex-wrap:wrap; gap:.6rem; min-height:5.5rem;
+  padding:.9rem; background:rgba(255,255,255,.5);
+  border:1px dashed var(--rule); margin-bottom:2.2rem; align-content:flex-start;
+}
+.bank.is-target{border-color:var(--garnet-soft);background:rgba(227,135,146,.08)}
+.bank-empty{font-size:.82rem;color:#9A8E85;font-style:italic;margin:auto}
+
+/* --------------------------------------------------------------- cards --- */
+.card{
+  font-family:var(--body); font-size:.82rem; line-height:1.4; text-align:left;
+  background:var(--card); border:1px solid var(--rule);
+  border-left:3px solid var(--rose); border-radius:2px;
+  padding:.55rem .7rem; max-width:18rem; cursor:grab;
+  box-shadow:0 1px 0 rgba(78,10,11,.06);
+  transition:transform .14s ease,box-shadow .14s ease,border-color .14s ease;
+  color:var(--ink); display:block;
+}
+.card:hover{transform:translateY(-2px);box-shadow:0 4px 10px rgba(78,10,11,.11)}
+.card:focus-visible{outline:2px solid var(--garnet);outline-offset:2px}
+.card.is-held{
+  border-color:var(--garnet); border-left-color:var(--garnet);
+  box-shadow:0 0 0 2px rgba(78,10,11,.22),0 6px 14px rgba(78,10,11,.16);
+  transform:translateY(-2px);
+}
+.card.is-dragging{opacity:.4}
+.card[data-kind="contributes"]{border-left-color:var(--brass)}
+.card[data-kind="stage"]{border-left-color:var(--khaki-deep);font-family:var(--mono);font-size:.76rem}
+.card[data-kind="does"]{border-left-color:var(--brass)}
+.card[data-kind="service"]{font-weight:500}
+
+/* --------------------------------------------------------------- board --- */
+.board{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:1.1rem}
+.board.wide{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+.board.pair{grid-template-columns:repeat(auto-fit,minmax(340px,1fr))}
+
+.concept{
+  background:var(--card); border:1px solid var(--rule);
+  border-top:3px solid var(--garnet); border-radius:2px;
+  padding:0 0 .9rem; box-shadow:0 1px 0 rgba(78,10,11,.05);
+}
+.concept-head{padding:.8rem 1rem .55rem;border-bottom:1px solid var(--rule);margin-bottom:.8rem}
+.concept-index{
+  font-family:var(--mono); font-size:.66rem; letter-spacing:.14em;
+  color:var(--brass); display:block; margin-bottom:.2rem;
+}
+.concept-name{
+  font-family:var(--display); font-size:1.08rem; font-weight:600;
+  color:var(--garnet); margin:0; line-height:1.25;
+}
+.concept-sub{font-size:.76rem;color:#8A7D74;margin:.25rem 0 0;line-height:1.35}
+
+.phase{
+  font-family:var(--mono); font-size:.6rem; letter-spacing:.12em;
+  text-transform:uppercase; padding:.14rem .5rem; border-radius:2px;
+  display:inline-block; margin-bottom:.35rem;
+}
+.phase-data{background:rgba(227,135,146,.18);color:var(--garnet-soft)}
+.phase-model{background:rgba(168,138,74,.2);color:var(--brass)}
+.phase-run{background:rgba(157,173,113,.24);color:var(--khaki-deep)}
+
+.slot-wrap{padding:0 1rem .1rem}
+.slot-label{
+  font-family:var(--mono); font-size:.62rem; letter-spacing:.14em;
+  text-transform:uppercase; color:#9A8E85; display:block; margin:.55rem 0 .3rem;
+}
+.slot{
+  min-height:4rem; border:1px dashed var(--rule); border-radius:2px;
+  padding:.35rem; display:flex;
+  transition:border-color .14s,background .14s;
+  background:rgba(242,238,232,.55);
+}
+.slot.is-target{border-color:var(--garnet-soft);background:rgba(227,135,146,.1)}
+.slot .card{max-width:none;width:100%;cursor:pointer;box-shadow:none}
+.slot .card:hover{transform:none;box-shadow:0 2px 6px rgba(78,10,11,.1)}
+.slot.is-correct{border-style:solid;border-color:var(--khaki);background:rgba(157,173,113,.13)}
+.slot.is-correct .card{border-color:var(--khaki);border-left-color:var(--khaki-deep);background:#fff}
+.slot.is-wrong{border-style:solid;border-color:var(--rose);background:rgba(227,135,146,.14);animation:nudge .3s ease}
+.slot.is-wrong .card{border-color:var(--rose);border-left-color:var(--garnet)}
+
+/* ------------------------------------------------------------- buckets --- */
+.dropzone{
+  margin:0 1rem; min-height:3.6rem; padding:.5rem;
+  border:1px dashed var(--rule); border-radius:2px;
+  background:rgba(242,238,232,.55);
+  display:flex; flex-direction:column; gap:.4rem;
+  transition:border-color .14s,background .14s;
+}
+.dropzone.is-target{border-color:var(--garnet-soft);background:rgba(227,135,146,.1)}
+.dropzone .card{max-width:none;width:100%;cursor:pointer;box-shadow:none;font-size:.79rem}
+.dropzone .card:hover{transform:none;box-shadow:0 2px 6px rgba(78,10,11,.1)}
+.dropzone-empty{font-size:.75rem;color:#A99D94;font-style:italic;margin:auto;text-align:center}
+.card.is-correct{border-color:var(--khaki);border-left-color:var(--khaki-deep);background:#fff}
+.card.is-wrong{border-color:var(--rose);border-left-color:var(--garnet);background:rgba(227,135,146,.1)}
+
+.mark{
+  font-family:var(--mono); font-size:.68rem; letter-spacing:.08em;
+  margin-top:.28rem; min-height:1rem; display:block;
+}
+.mark.ok{color:var(--khaki-deep)}
+.mark.no{color:var(--garnet)}
+
+@keyframes nudge{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+
+/* ------------------------------------------------------------ controls --- */
+.controls{
+  max-width:1180px; margin:2.2rem auto 0; padding:1.2rem 1.5rem 0;
+  border-top:1px solid var(--rule); display:flex; flex-wrap:wrap;
+  gap:.6rem; align-items:center;
+}
+button.act{
+  font-family:var(--body); font-size:.84rem; padding:.55rem 1.1rem;
+  border-radius:2px; border:1px solid var(--garnet);
+  background:var(--garnet); color:#fff; cursor:pointer;
+  transition:background .15s,color .15s;
+}
+button.act:hover{background:var(--garnet-soft);border-color:var(--garnet-soft)}
+button.act.ghost{background:transparent;color:var(--garnet)}
+button.act.ghost:hover{background:rgba(78,10,11,.07);color:var(--garnet)}
+button.act:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+
+.verdict{
+  max-width:1180px; margin:1.1rem auto 0; padding:0 1.5rem;
+  font-size:.9rem; min-height:1.5rem; color:var(--garnet);
+}
+.verdict.win{color:var(--khaki-deep);font-weight:600}
+
+.footnote{
+  max-width:1180px; margin:2.4rem auto 0; padding:1.1rem 1.5rem 0;
+  border-top:1px solid var(--rule); font-size:.82rem; color:#6B5F57;
+}
+.footnote strong{color:var(--garnet)}
+
+@media (max-width:640px){
+  .masthead h1{font-size:1.25rem}
+  main,.controls,.rounds,.verdict,.footnote{padding-left:1rem;padding-right:1rem}
+  .card{max-width:none;width:100%}
+  .board,.board.wide,.board.pair{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms !important;transition-duration:.01ms !important}
+}
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="masthead-inner">
+    <div class="title-block">
+      <p class="eyebrow">AIF-C01 · Domain 1 · Objective 1.3.4</p>
+      <h1>Pipeline Services Card Match</h1>
+    </div>
+    <div class="tally" id="tally">Placed <b id="placedCount">0</b> / <b id="totalCount">24</b></div>
+  </div>
+</header>
+
+<nav class="rounds" role="tablist" aria-label="Rounds">
+  <button class="round-tab" role="tab" aria-selected="true"  data-round="flagship">Flagship per stage <span class="tab-count">24</span></button>
+  <button class="round-tab" role="tab" aria-selected="false" data-round="sort">Sort every service <span class="tab-count">36</span></button>
+  <button class="round-tab" role="tab" aria-selected="false" data-round="rename">The v1.1 rename drill <span class="tab-count">10</span></button>
+  <button class="round-tab" role="tab" aria-selected="false" data-round="family">Sub-feature or platform? <span class="tab-count">16</span></button>
+</nav>
+
+<main>
+  <p class="round-intro" id="roundIntro"></p>
+
+  <div class="bank-head">
+    <h2>Loose cards</h2>
+    <span class="hint">Click a card, then click where it goes. Or drag it. Click a placed card to send it back.</span>
+  </div>
+  <div class="bank" id="bank" aria-label="Unplaced cards"></div>
+
+  <div class="board" id="board"></div>
+</main>
+
+<div class="controls">
+  <button class="act" id="btnCheck">Check answers</button>
+  <button class="act ghost" id="btnShuffle">Shuffle cards</button>
+  <button class="act ghost" id="btnClear">Clear board</button>
+  <button class="act ghost" id="btnReveal">Show me the answers</button>
+</div>
+
+<p class="verdict" id="verdict"></p>
+
+<div class="footnote" id="footnote"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  const ROUNDS = {
+
+    /* ---------------------------------------------------- 1. flagship --- */
+    flagship:{
+      mode:"slots",
+      intro:"One flagship service per stage — the same twelve stages, and the same countdown from the mind map: five data stages, four model stages, three run stages. If you can reproduce that shape from memory, you know how many flagships you're about to be tested on before you place a single card.",
+      footnote:"<strong>The countdown:</strong> 5 data · 4 model · 3 run. Store, prepare, explore, featurise, label — train, access FMs, build agents, author code — deploy, monitor, govern.",
+      slotTypes:[
+        {key:"service",     label:"Flagship service"},
+        {key:"contributes", label:"What it contributes"}
+      ],
+      concepts:[
+        {id:"storage",  name:"Data storage", phase:"data",
+          service:"Amazon S3",
+          contributes:"The default data lake for ML training data and artefacts."},
+        {id:"ingest",   name:"Data ingestion and preparation", phase:"data",
+          service:"AWS Glue",
+          contributes:"Serverless ETL and the Data Catalog."},
+        {id:"explore",  name:"Exploration and analysis", phase:"data",
+          service:"Amazon Quick",
+          contributes:"BI dashboards, natural-language analysis and agentic research over your data."},
+        {id:"feature",  name:"Feature management", phase:"data",
+          service:"SageMaker Feature Store",
+          contributes:"Central, versioned feature definitions reused in training and inference."},
+        {id:"label",    name:"Labelling", phase:"data",
+          service:"SageMaker Ground Truth",
+          contributes:"Builds labelled training datasets."},
+        {id:"train",    name:"Training and tuning", phase:"model",
+          service:"Amazon SageMaker AI",
+          contributes:"Trains custom models on your own data."},
+        {id:"genmodel", name:"Generative model access", phase:"model",
+          service:"Amazon Bedrock",
+          contributes:"Managed multi-provider foundation model API."},
+        {id:"agent",    name:"Agent development", phase:"model",
+          service:"Amazon Bedrock AgentCore",
+          contributes:"Production runtime and infrastructure for agents."},
+        {id:"devtool",  name:"Developer tooling", phase:"model",
+          service:"Kiro",
+          contributes:"Spec-driven agentic IDE."},
+        {id:"deploy",   name:"Deployment", phase:"run",
+          service:"SageMaker AI endpoints or Amazon Bedrock",
+          contributes:"Real-time, serverless, asynchronous or batch — or self-host on Lambda, ECS, EKS or EC2."},
+        {id:"monitor",  name:"Monitoring", phase:"run",
+          service:"SageMaker Model Monitor",
+          contributes:"Detects data and model quality drift."},
+        {id:"governance", name:"Governance", phase:"run",
+          service:"SageMaker Model Cards",
+          contributes:"Documents intended use, training data, evaluation results and approval status."}
+      ]
+    },
+
+    /* -------------------------------------------------------- 2. sort --- */
+    sort:{
+      mode:"buckets",
+      intro:"Every service named in objective 1.3.4, sorted into its stage. This is the exhaustive version of round one — thirty-six services, some of which genuinely belong to two stages at once. Two cards are marked with a dagger for that reason; either of their valid stages counts as correct.",
+      footnote:"<strong>†</strong> Two services legitimately serve two stages. SageMaker JumpStart supplies pre-trained models for both training and generative model access. Amazon Bedrock is both the generative model access point and a deployment option. Placing either in either of its valid stages is correct.",
+      targets:[
+        {id:"storage",  name:"Data storage"},
+        {id:"ingest",   name:"Data ingestion and preparation"},
+        {id:"explore",  name:"Exploration and analysis"},
+        {id:"feature",  name:"Feature management"},
+        {id:"label",    name:"Labelling"},
+        {id:"train",    name:"Training and tuning"},
+        {id:"genmodel", name:"Generative model access"},
+        {id:"agent",    name:"Agent development"},
+        {id:"devtool",  name:"Developer tooling"},
+        {id:"deploy",   name:"Deployment"},
+        {id:"monitor",  name:"Monitoring"},
+        {id:"governance", name:"Governance"}
+      ],
+      items:[
+        {id:"st1", target:"storage", text:"Amazon S3"},
+        {id:"st2", target:"storage", text:"Amazon S3 Glacier"},
+        {id:"st3", target:"storage", text:"Amazon Redshift"},
+        {id:"st4", target:"storage", text:"Amazon RDS"},
+        {id:"st5", target:"storage", text:"Amazon Aurora"},
+
+        {id:"in1", target:"ingest", text:"AWS Glue"},
+        {id:"in2", target:"ingest", text:"AWS Glue DataBrew"},
+        {id:"in3", target:"ingest", text:"Amazon EMR"},
+        {id:"in4", target:"ingest", text:"AWS Lake Formation"},
+        {id:"in5", target:"ingest", text:"SageMaker Data Wrangler"},
+
+        {id:"ex1", target:"explore", text:"Amazon Quick"},
+        {id:"ex2", target:"explore", text:"Amazon Athena"},
+        {id:"ex3", target:"explore", text:"SageMaker Studio notebooks"},
+
+        {id:"fe1", target:"feature", text:"SageMaker Feature Store"},
+
+        {id:"la1", target:"label", text:"SageMaker Ground Truth"},
+        {id:"la2", target:"label", text:"Amazon Augmented AI (A2I)"},
+
+        {id:"tr1", target:"train", text:"Amazon SageMaker AI"},
+        {id:"tr2", targets:["train","genmodel"], primary:"train", text:"SageMaker JumpStart †"},
+
+        {id:"ge1", targets:["genmodel","deploy"], primary:"genmodel", text:"Amazon Bedrock †"},
+
+        {id:"ag1", target:"agent", text:"Amazon Bedrock AgentCore"},
+        {id:"ag2", target:"agent", text:"Strands Agents"},
+        {id:"ag3", target:"agent", text:"Amazon Bedrock Agents"},
+
+        {id:"dt1", target:"devtool", text:"Kiro"},
+        {id:"dt2", target:"devtool", text:"Amazon Q"},
+
+        {id:"de1", target:"deploy", text:"SageMaker AI endpoints"},
+        {id:"de2", target:"deploy", text:"AWS Lambda"},
+        {id:"de3", target:"deploy", text:"Amazon ECS"},
+        {id:"de4", target:"deploy", text:"Amazon EKS"},
+        {id:"de5", target:"deploy", text:"Amazon EC2"},
+
+        {id:"mo1", target:"monitor", text:"SageMaker Model Monitor"},
+        {id:"mo2", target:"monitor", text:"Amazon CloudWatch"},
+        {id:"mo3", target:"monitor", text:"SageMaker Clarify"},
+
+        {id:"go1", target:"governance", text:"SageMaker Model Cards"},
+        {id:"go2", target:"governance", text:"SageMaker Model Registry"},
+        {id:"go3", target:"governance", text:"AWS CloudTrail"},
+        {id:"go4", target:"governance", text:"AWS Config"}
+      ]
+    },
+
+    /* ------------------------------------------------------ 3. rename --- */
+    rename:{
+      mode:"slots",
+      intro:"The v1.1 example list changed noticeably, from SageMaker sub-features to this broader set: Amazon Bedrock, Amazon Q, Amazon Quick, Kiro and SageMaker AI. These five are the names most likely to be tested literally, and Amazon Quick specifically is the one the exam guide flags as worth learning by name.",
+      footnote:"<strong>Remember for the exam:</strong> Amazon Quick is the name to learn. Amazon QuickSight evolved into Amazon Quick Suite, adding agentic research, chat and automation on top of the familiar BI dashboards. The exam guide lists it simply as \"Amazon Quick\" under Analytics. If a stem mentions dashboards, natural-language questions over business data, or an agentic research assistant for business users, this is the service.",
+      slotTypes:[
+        {key:"stage", label:"Pipeline stage(s)"},
+        {key:"does",  label:"What it does"}
+      ],
+      concepts:[
+        {id:"bedrock", name:"Amazon Bedrock",
+          stage:"Generative model access; Deployment",
+          does:"Managed multi-provider FM API — the way you access someone else's foundation model without hosting it yourself."},
+        {id:"amazonq", name:"Amazon Q",
+          stage:"Developer tooling",
+          does:"AI assistant across AWS surfaces — the console, documentation, chat."},
+        {id:"quick",   name:"Amazon Quick",
+          stage:"Exploration and analysis",
+          does:"Evolved from Amazon QuickSight. BI dashboards plus natural-language analysis and agentic research over your data."},
+        {id:"kiro",    name:"Kiro",
+          stage:"Developer tooling",
+          does:"Spec-driven agentic IDE. Writes requirements and a design before it writes code."},
+        {id:"smai",    name:"SageMaker AI",
+          stage:"Training and tuning; Deployment",
+          does:"Trains custom models, and hosts them on real-time, serverless, asynchronous or batch endpoints."}
+      ]
+    },
+
+    /* ------------------------------------------------------- 4. family --- */
+    family:{
+      mode:"buckets",
+      intro:"A fast final check on the same distinction the objective opens with. Is this a specific tool living inside the SageMaker AI platform, or is it a broader, standalone platform-level service — the kind of name that got added to the v1.1 example list?",
+      footnote:"<strong>The objective's own framing:</strong> \"the v1.1 example list changed noticeably, from SageMaker sub-features to a broader set.\" Both sets are worth knowing, and this round only tests whether you can tell which set a name belongs to.",
+      targets:[
+        {id:"subfeature", name:"A SageMaker sub-capability", sub:"A specific tool inside the SageMaker AI platform"},
+        {id:"platform",   name:"A broader platform-level service", sub:"A named product in its own right"}
+      ],
+      items:[
+        {id:"sf1", target:"subfeature", text:"SageMaker Feature Store"},
+        {id:"sf2", target:"subfeature", text:"SageMaker Ground Truth"},
+        {id:"sf3", target:"subfeature", text:"SageMaker Data Wrangler"},
+        {id:"sf4", target:"subfeature", text:"SageMaker Studio notebooks"},
+        {id:"sf5", target:"subfeature", text:"SageMaker JumpStart"},
+        {id:"sf6", target:"subfeature", text:"SageMaker Model Monitor"},
+        {id:"sf7", target:"subfeature", text:"SageMaker Clarify"},
+        {id:"sf8", target:"subfeature", text:"SageMaker Model Registry"},
+        {id:"sf9", target:"subfeature", text:"SageMaker Model Cards"},
+
+        {id:"pf1", target:"platform", text:"Amazon Bedrock"},
+        {id:"pf2", target:"platform", text:"Amazon Q"},
+        {id:"pf3", target:"platform", text:"Amazon Quick"},
+        {id:"pf4", target:"platform", text:"Kiro"},
+        {id:"pf5", target:"platform", text:"Amazon Bedrock AgentCore"},
+        {id:"pf6", target:"platform", text:"Strands Agents"},
+        {id:"pf7", target:"platform", text:"Amazon Bedrock Agents"}
+      ]
+    }
+  };
+
+  const bank       = document.getElementById("bank");
+  const board      = document.getElementById("board");
+  const verdict    = document.getElementById("verdict");
+  const roundIntro = document.getElementById("roundIntro");
+  const footnote   = document.getElementById("footnote");
+  const placedEl   = document.getElementById("placedCount");
+  const totalEl    = document.getElementById("totalCount");
+
+  let currentRound = "flagship";
+  let held = null;
+  let checked = false;
+
+  function shuffle(arr){
+    const a = arr.slice();
+    for(let i=a.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [a[i],a[j]] = [a[j],a[i]];
+    }
+    return a;
+  }
+  function R(){ return ROUNDS[currentRound]; }
+  function isBuckets(){ return R().mode === "buckets"; }
+
+  function allCards(){
+    const r = R();
+    if(r.mode === "buckets"){
+      return r.items.map(it=>({ id:it.id, kind:"service", text:it.text }));
+    }
+    const out = [];
+    r.concepts.forEach(c=>{
+      r.slotTypes.forEach(t=>{
+        out.push({ id:c.id+"|"+t.key, kind:t.key, text:c[t.key] });
+      });
+    });
+    return out;
+  }
+  function cardById(id){ return allCards().find(c=>c.id===id) || null; }
+
+  function expectedTargetsFor(cardId){
+    const r = R();
+    if(r.mode !== "buckets") return [];
+    const it = r.items.find(i=>i.id===cardId);
+    if(!it) return [];
+    if(it.targets) return it.targets;
+    return [it.target];
+  }
+  function primaryTargetFor(cardId){
+    const r = R();
+    if(r.mode !== "buckets") return null;
+    const it = r.items.find(i=>i.id===cardId);
+    if(!it) return null;
+    return it.primary || it.target || (it.targets && it.targets[0]) || null;
+  }
+
+  /* --------------------------------------------------------- card build */
+  function makeCardEl(card){
+    const el = document.createElement("button");
+    el.type = "button";
+    el.className = "card";
+    el.dataset.cardId = card.id;
+    el.dataset.kind = card.kind;
+    el.draggable = true;
+    el.textContent = card.text;
+
+    el.addEventListener("click", function(ev){
+      ev.stopPropagation();
+      const p = el.parentElement;
+      if(p && (p.classList.contains("slot") || p.classList.contains("dropzone"))){
+        returnToBank(el);
+      }else{
+        toggleHold(card.id, el);
+      }
+    });
+    el.addEventListener("dragstart", function(ev){
+      held = card.id;
+      el.classList.add("is-dragging");
+      try{ ev.dataTransfer.setData("text/plain", card.id); }catch(e){}
+      ev.dataTransfer.effectAllowed = "move";
+    });
+    el.addEventListener("dragend", function(){
+      el.classList.remove("is-dragging");
+      clearHeldStyles();
+      held = null;
+    });
+    return el;
+  }
+
+  function clearHeldStyles(){
+    document.querySelectorAll(".card.is-held").forEach(c=>c.classList.remove("is-held"));
+  }
+  function toggleHold(id, el){
+    if(held === id){ held=null; clearHeldStyles(); return; }
+    held = id; clearHeldStyles(); el.classList.add("is-held");
+  }
+
+  /* ------------------------------------------------------------- render */
+  function render(){
+    const r = R();
+    roundIntro.textContent = r.intro;
+    footnote.innerHTML = r.footnote;
+    board.className = "board" + (r.mode === "buckets" ? (r.targets.length <= 2 ? " pair" : " wide") : "");
+    totalEl.textContent = allCards().length;
+
+    board.innerHTML = "";
+    if(r.mode === "buckets") renderBuckets(r); else renderSlots(r);
+
+    fillBank(allCards());
+    clearAllMarks();
+    updateTally();
+  }
+
+  const PHASE_LABEL = {data:"Data", model:"Model", run:"Run"};
+
+  function renderSlots(r){
+    r.concepts.forEach((c,i)=>{
+      const wrap = document.createElement("section");
+      wrap.className = "concept";
+      wrap.appendChild(conceptHead(i, c.name, null, c.phase));
+
+      r.slotTypes.forEach(t=>{
+        const sw = document.createElement("div");
+        sw.className = "slot-wrap";
+
+        const lab = document.createElement("span");
+        lab.className = "slot-label";
+        lab.textContent = t.label;
+
+        const slot = document.createElement("div");
+        slot.className = "slot";
+        slot.dataset.expects = c.id+"|"+t.key;
+        slot.tabIndex = 0;
+        slot.setAttribute("role","group");
+        slot.setAttribute("aria-label", c.name+" — "+t.label);
+
+        slot.addEventListener("click", function(){ placeIntoSlot(slot); });
+        slot.addEventListener("keydown", function(ev){
+          if(ev.key==="Enter"||ev.key===" "){ ev.preventDefault(); placeIntoSlot(slot); }
+        });
+        wireDrop(slot, function(){ placeIntoSlot(slot); });
+
+        const mark = document.createElement("span");
+        mark.className = "mark";
+
+        sw.appendChild(lab); sw.appendChild(slot); sw.appendChild(mark);
+        wrap.appendChild(sw);
+      });
+      board.appendChild(wrap);
+    });
+  }
+
+  function renderBuckets(r){
+    r.targets.forEach((t,i)=>{
+      const wrap = document.createElement("section");
+      wrap.className = "concept";
+      wrap.appendChild(conceptHead(i, t.name, t.sub, null));
+
+      const zone = document.createElement("div");
+      zone.className = "dropzone";
+      zone.dataset.bucket = t.id;
+      zone.tabIndex = 0;
+      zone.setAttribute("role","group");
+      zone.setAttribute("aria-label", t.name);
+
+      zone.addEventListener("click", function(){ placeIntoBucket(zone); });
+      zone.addEventListener("keydown", function(ev){
+        if(ev.key==="Enter"||ev.key===" "){ ev.preventDefault(); placeIntoBucket(zone); }
+      });
+      wireDrop(zone, function(){ placeIntoBucket(zone); });
+
+      wrap.appendChild(zone);
+
+      const mark = document.createElement("span");
+      mark.className = "mark";
+      mark.style.padding = "0 1rem";
+      wrap.appendChild(mark);
+
+      board.appendChild(wrap);
+      refreshZoneEmpty(zone);
+    });
+  }
+
+  function conceptHead(i, name, sub, phase){
+    const head = document.createElement("div");
+    head.className = "concept-head";
+    if(phase){
+      const p = document.createElement("span");
+      p.className = "phase phase-" + phase;
+      p.textContent = PHASE_LABEL[phase] || phase;
+      head.appendChild(p);
+      head.appendChild(document.createElement("br"));
+    }
+    const idx = document.createElement("span");
+    idx.className = "concept-index";
+    idx.textContent = String(i+1).padStart(2,"0");
+    const nm = document.createElement("h3");
+    nm.className = "concept-name";
+    nm.textContent = name;
+    head.appendChild(idx); head.appendChild(nm);
+    if(sub){
+      const s = document.createElement("p");
+      s.className = "concept-sub";
+      s.textContent = sub;
+      head.appendChild(s);
+    }
+    return head;
+  }
+
+  function wireDrop(node, onDrop){
+    node.addEventListener("dragover", function(ev){ ev.preventDefault(); node.classList.add("is-target"); });
+    node.addEventListener("dragleave", function(){ node.classList.remove("is-target"); });
+    node.addEventListener("drop", function(ev){
+      ev.preventDefault();
+      node.classList.remove("is-target");
+      let id="";
+      try{ id = ev.dataTransfer.getData("text/plain"); }catch(e){}
+      if(!id) id = held;
+      if(id){ held = id; onDrop(); }
+    });
+  }
+
+  function fillBank(cards){
+    bank.innerHTML = "";
+    shuffle(cards).forEach(c=> bank.appendChild(makeCardEl(c)) );
+    refreshBankEmpty();
+  }
+  function refreshBankEmpty(){
+    const has = bank.querySelector(".card");
+    const msg = bank.querySelector(".bank-empty");
+    if(!has && !msg){
+      const p = document.createElement("p");
+      p.className = "bank-empty";
+      p.textContent = "All cards placed. Check your answers below.";
+      bank.appendChild(p);
+    }
+    if(has && msg) msg.remove();
+  }
+  function refreshZoneEmpty(zone){
+    const has = zone.querySelector(".card");
+    const msg = zone.querySelector(".dropzone-empty");
+    if(!has && !msg){
+      const p = document.createElement("p");
+      p.className = "dropzone-empty";
+      p.textContent = "Drop services here";
+      zone.appendChild(p);
+    }
+    if(has && msg) msg.remove();
+  }
+  function refreshAllZones(){ board.querySelectorAll(".dropzone").forEach(refreshZoneEmpty); }
+
+  /* ---------------------------------------------------------- placement */
+  function heldEl(){
+    if(!held) return null;
+    return document.querySelector('.card[data-card-id="'+CSS.escape(held)+'"]');
+  }
+
+  function placeIntoSlot(slot){
+    const el = heldEl();
+    if(!el) return;
+    const existing = slot.querySelector(".card");
+    if(existing && existing !== el) bank.appendChild(existing);
+    slot.appendChild(el);
+    el.classList.remove("is-held");
+    held = null;
+    clearSlotState(slot);
+    refreshBankEmpty(); updateTally();
+    if(checked) clearAllMarks();
+  }
+
+  function placeIntoBucket(zone){
+    const el = heldEl();
+    if(!el) return;
+    const prev = el.parentElement;
+    zone.appendChild(el);
+    el.classList.remove("is-held","is-correct","is-wrong");
+    held = null;
+    if(prev && prev.classList.contains("dropzone")) refreshZoneEmpty(prev);
+    refreshZoneEmpty(zone);
+    refreshBankEmpty(); updateTally();
+    if(checked) clearAllMarks();
+  }
+
+  function returnToBank(el){
+    const parent = el.parentElement;
+    bank.appendChild(el);
+    el.classList.remove("is-correct","is-wrong");
+    if(parent){
+      if(parent.classList.contains("slot")) clearSlotState(parent);
+      if(parent.classList.contains("dropzone")) refreshZoneEmpty(parent);
+    }
+    held = null; clearHeldStyles();
+    refreshBankEmpty(); updateTally();
+    if(checked) clearAllMarks();
+  }
+
+  function clearSlotState(slot){
+    slot.classList.remove("is-correct","is-wrong");
+    const m = slot.parentElement.querySelector(".mark");
+    if(m){ m.textContent=""; m.className="mark"; }
+  }
+
+  function clearAllMarks(){
+    checked = false;
+    board.querySelectorAll(".slot").forEach(clearSlotState);
+    board.querySelectorAll(".mark").forEach(m=>{ m.textContent=""; m.className="mark"; if(m.parentElement.classList.contains("concept")) m.style.padding="0 1rem"; });
+    board.querySelectorAll(".card").forEach(c=>c.classList.remove("is-correct","is-wrong"));
+    verdict.textContent = ""; verdict.className = "verdict";
+  }
+
+  function updateTally(){
+    const n = board.querySelectorAll(".slot .card, .dropzone .card").length;
+    placedEl.textContent = n;
+  }
+
+  /* ------------------------------------------------------------- check */
+  function check(){
+    return isBuckets() ? checkBuckets() : checkSlots();
+  }
+
+  function checkSlots(){
+    const slots = Array.from(board.querySelectorAll(".slot"));
+    let right = 0, filled = 0;
+    slots.forEach(slot=>{
+      const el = slot.querySelector(".card");
+      const mark = slot.parentElement.querySelector(".mark");
+      slot.classList.remove("is-correct","is-wrong");
+      if(!el){ mark.textContent=""; mark.className="mark"; return; }
+      filled++;
+      if(el.dataset.cardId === slot.dataset.expects){
+        right++; slot.classList.add("is-correct");
+        mark.textContent="Correct"; mark.className="mark ok";
+      }else{
+        slot.classList.add("is-wrong");
+        mark.textContent="Not this one — click it to send it back";
+        mark.className="mark no";
+      }
+    });
+    finishCheck(right, slots.length, filled);
+  }
+
+  function checkBuckets(){
+    const zones = Array.from(board.querySelectorAll(".dropzone"));
+    let right = 0, filled = 0;
+    const total = allCards().length;
+
+    zones.forEach(zone=>{
+      const cards = Array.from(zone.querySelectorAll(".card"));
+      let zoneRight = 0;
+      cards.forEach(el=>{
+        filled++;
+        const valid = expectedTargetsFor(el.dataset.cardId);
+        el.classList.remove("is-correct","is-wrong");
+        if(valid.indexOf(zone.dataset.bucket) !== -1){ right++; zoneRight++; el.classList.add("is-correct"); }
+        else{ el.classList.add("is-wrong"); }
+      });
+      const mark = zone.parentElement.querySelector(".mark");
+      if(!cards.length){ mark.textContent=""; mark.className="mark"; }
+      else if(zoneRight === cards.length){
+        mark.textContent = "All " + cards.length + " correct";
+        mark.className = "mark ok";
+      }else{
+        mark.textContent = zoneRight + " of " + cards.length + " correct";
+        mark.className = "mark no";
+      }
+      mark.style.padding = "0 1rem";
+    });
+    finishCheck(right, total, filled);
+  }
+
+  function finishCheck(right, total, filled){
+    checked = true;
+    if(filled === 0){
+      verdict.textContent = "Place some cards first, then check.";
+      verdict.className = "verdict";
+    }else if(right === total){
+      verdict.textContent = "All " + total + " correct. Nothing left to fix in this round.";
+      verdict.className = "verdict win";
+    }else{
+      verdict.textContent = right + " of " + total + " correct. The marked cards are in the wrong place — click one to send it back.";
+      verdict.className = "verdict";
+    }
+  }
+
+  /* ----------------------------------------------------------- actions */
+  function clearBoard(){
+    board.querySelectorAll(".slot .card, .dropzone .card").forEach(el=>{
+      el.classList.remove("is-correct","is-wrong");
+      bank.appendChild(el);
+    });
+    board.querySelectorAll(".slot").forEach(clearSlotState);
+    refreshAllZones();
+    clearAllMarks();
+    refreshBankEmpty(); updateTally();
+  }
+
+  function reveal(){
+    clearBoard();
+    if(isBuckets()){
+      board.querySelectorAll(".dropzone").forEach(zone=>{
+        R().items.filter(it=> primaryTargetFor(it.id) === zone.dataset.bucket).forEach(it=>{
+          const el = document.querySelector('.card[data-card-id="'+CSS.escape(it.id)+'"]');
+          if(el){ zone.appendChild(el); el.classList.add("is-correct"); }
+        });
+        const mark = zone.parentElement.querySelector(".mark");
+        mark.textContent = "Answer"; mark.className = "mark ok"; mark.style.padding="0 1rem";
+      });
+      refreshAllZones();
+    }else{
+      board.querySelectorAll(".slot").forEach(slot=>{
+        const el = document.querySelector('.card[data-card-id="'+CSS.escape(slot.dataset.expects)+'"]');
+        if(el){
+          slot.appendChild(el);
+          slot.classList.add("is-correct");
+          const m = slot.parentElement.querySelector(".mark");
+          m.textContent = "Answer"; m.className = "mark ok";
+        }
+      });
+    }
+    checked = true;
+    refreshBankEmpty(); updateTally();
+    verdict.textContent = "Answers shown. Clear the board and try it again from memory.";
+    verdict.className = "verdict";
+  }
+
+  /* ------------------------------------------------------------ wiring */
+  document.getElementById("btnCheck").addEventListener("click", check);
+  document.getElementById("btnClear").addEventListener("click", clearBoard);
+  document.getElementById("btnReveal").addEventListener("click", reveal);
+  document.getElementById("btnShuffle").addEventListener("click", function(){
+    const loose = Array.from(bank.querySelectorAll(".card"))
+      .map(el=>cardById(el.dataset.cardId)).filter(Boolean);
+    fillBank(loose);
+  });
+
+  bank.addEventListener("click", function(){ if(held){ clearHeldStyles(); held=null; } });
+  wireDrop(bank, function(){
+    const el = heldEl();
+    if(!el) return;
+    const parent = el.parentElement;
+    bank.appendChild(el);
+    el.classList.remove("is-correct","is-wrong");
+    if(parent){
+      if(parent.classList.contains("slot")) clearSlotState(parent);
+      if(parent.classList.contains("dropzone")) refreshZoneEmpty(parent);
+    }
+    held = null;
+    refreshBankEmpty(); updateTally();
+  });
+
+  document.querySelectorAll(".round-tab").forEach(tab=>{
+    tab.addEventListener("click", function(){
+      document.querySelectorAll(".round-tab").forEach(t=>t.setAttribute("aria-selected","false"));
+      tab.setAttribute("aria-selected","true");
+      currentRound = tab.dataset.round;
+      held = null;
+      render();
+      window.scrollTo({top:0,behavior:"smooth"});
+    });
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

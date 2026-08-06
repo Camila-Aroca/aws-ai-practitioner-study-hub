@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lifecycle Card Match — AIF-C01 objectives 1.3.1–1.3.3</title>
+<style>
+:root{
+  --garnet:#4E0A0B;
+  --garnet-soft:#7A2A29;
+  --ink:#1C1512;
+  --parchment:#F2EEE8;
+  --card:#FBF9F6;
+  --khaki:#9DAD71;
+  --khaki-deep:#5F7040;
+  --rose:#E38792;
+  --brass:#A88A4A;
+  --rule:#D9D0C5;
+
+  --display:'Iowan Old Style','Palatino Linotype',Palatino,'Book Antiqua',Georgia,serif;
+  --body:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,monospace;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--parchment);
+  color:var(--ink);
+  font-family:var(--body);
+  font-size:16px;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  padding:0 0 4rem;
+}
+
+/* ---------------------------------------------------------- masthead --- */
+.masthead{
+  border-bottom:2px solid var(--garnet);
+  background:var(--parchment);
+  position:sticky; top:0; z-index:50;
+}
+.masthead-inner{
+  max-width:1180px; margin:0 auto;
+  padding:1.1rem 1.5rem .9rem;
+  display:flex; flex-wrap:wrap; align-items:baseline; gap:.6rem 1.4rem;
+}
+.eyebrow{
+  font-family:var(--mono); font-size:.66rem; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--brass); margin:0 0 .15rem;
+}
+.masthead h1{
+  font-family:var(--display); font-size:1.5rem; font-weight:600;
+  color:var(--garnet); margin:0; letter-spacing:-.01em;
+}
+.masthead .title-block{flex:1 1 260px}
+.tally{
+  font-family:var(--mono); font-size:.78rem; letter-spacing:.06em;
+  color:var(--garnet); border:1px solid var(--rule); background:var(--card);
+  padding:.4rem .7rem; white-space:nowrap;
+}
+.tally b{font-weight:700}
+
+/* ------------------------------------------------------------- rounds --- */
+.rounds{
+  max-width:1180px; margin:0 auto; padding:1.1rem 1.5rem 0;
+  display:flex; gap:.5rem; flex-wrap:wrap;
+}
+.round-tab{
+  font-family:var(--body); font-size:.8rem; background:transparent;
+  border:1px solid var(--rule); color:var(--garnet-soft);
+  padding:.42rem .8rem; cursor:pointer; border-radius:2px;
+  transition:background .15s,color .15s,border-color .15s;
+}
+.round-tab:hover{border-color:var(--garnet-soft)}
+.round-tab[aria-selected="true"]{background:var(--garnet);border-color:var(--garnet);color:#fff}
+.round-tab .tab-count{font-family:var(--mono);font-size:.68rem;opacity:.7;margin-left:.35rem}
+.round-tab:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+
+/* --------------------------------------------------------------- shell --- */
+main{max-width:1180px;margin:0 auto;padding:1.4rem 1.5rem 0}
+.round-intro{font-size:.9rem;color:#5A4E47;margin:0 0 1.4rem;max-width:68ch}
+
+.bank-head{
+  display:flex; align-items:baseline; justify-content:space-between;
+  gap:1rem; border-bottom:1px solid var(--rule);
+  padding-bottom:.4rem; margin-bottom:.9rem;
+}
+.bank-head h2{
+  font-family:var(--mono); font-size:.68rem; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--brass); font-weight:500; margin:0;
+}
+.hint{font-size:.76rem;color:#8A7D74}
+
+.bank{
+  display:flex; flex-wrap:wrap; gap:.6rem; min-height:5.5rem;
+  padding:.9rem; background:rgba(255,255,255,.5);
+  border:1px dashed var(--rule); margin-bottom:2.2rem; align-content:flex-start;
+}
+.bank.is-target{border-color:var(--garnet-soft);background:rgba(227,135,146,.08)}
+.bank-empty{font-size:.82rem;color:#9A8E85;font-style:italic;margin:auto}
+
+/* --------------------------------------------------------------- cards --- */
+.card{
+  font-family:var(--body); font-size:.82rem; line-height:1.4; text-align:left;
+  background:var(--card); border:1px solid var(--rule);
+  border-left:3px solid var(--rose); border-radius:2px;
+  padding:.55rem .7rem; max-width:19rem; cursor:grab;
+  box-shadow:0 1px 0 rgba(78,10,11,.06);
+  transition:transform .14s ease,box-shadow .14s ease,border-color .14s ease;
+  color:var(--ink); display:block;
+}
+.card:hover{transform:translateY(-2px);box-shadow:0 4px 10px rgba(78,10,11,.11)}
+.card:focus-visible{outline:2px solid var(--garnet);outline-offset:2px}
+.card.is-held{
+  border-color:var(--garnet); border-left-color:var(--garnet);
+  box-shadow:0 0 0 2px rgba(78,10,11,.22),0 6px 14px rgba(78,10,11,.16);
+  transform:translateY(-2px);
+}
+.card.is-dragging{opacity:.4}
+.card[data-kind="means"],.card[data-kind="description"]{border-left-color:var(--brass)}
+.card[data-kind="aws"],.card[data-kind="awsManages"]{border-left-color:var(--khaki-deep)}
+.card[data-kind="tradeoff"],.card[data-kind="bestWhen"]{border-left-color:var(--garnet-soft)}
+.card[data-kind="youManage"]{border-left-color:var(--khaki-deep)}
+
+/* --------------------------------------------------------------- board --- */
+.board{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:1.1rem}
+.board.wide{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+.board.pair{grid-template-columns:repeat(auto-fit,minmax(340px,1fr))}
+.board.track{grid-template-columns:1fr;gap:.55rem;max-width:640px}
+
+.concept{
+  background:var(--card); border:1px solid var(--rule);
+  border-top:3px solid var(--garnet); border-radius:2px;
+  padding:0 0 .9rem; box-shadow:0 1px 0 rgba(78,10,11,.05);
+}
+.concept-head{padding:.8rem 1rem .55rem;border-bottom:1px solid var(--rule);margin-bottom:.8rem}
+.concept-index{
+  font-family:var(--mono); font-size:.66rem; letter-spacing:.14em;
+  color:var(--brass); display:block; margin-bottom:.2rem;
+}
+.concept-name{
+  font-family:var(--display); font-size:1.06rem; font-weight:600;
+  color:var(--garnet); margin:0; line-height:1.25;
+}
+.concept-sub{font-size:.76rem;color:#8A7D74;margin:.25rem 0 0;line-height:1.35}
+
+/* compact track layout for the sequencing round */
+.track .concept{display:flex;align-items:center;gap:.9rem;padding:.6rem .9rem}
+.track .concept-head{border:none;padding:0;margin:0;flex:0 0 auto}
+.track .concept-index{
+  font-family:var(--display); font-size:1.3rem; color:var(--garnet);
+  background:rgba(227,135,146,.16); border-radius:50%;
+  width:2.1rem;height:2.1rem;display:flex;align-items:center;justify-content:center;
+  margin:0;
+}
+.track .concept-name{display:none}
+.track .slot-wrap{flex:1 1 auto;padding:0}
+.track .slot-label{display:none}
+.track .slot{min-height:2.9rem}
+.track .mark{padding:0 0 0 .2rem !important;margin-top:0}
+
+.slot-wrap{padding:0 1rem .1rem}
+.slot-label{
+  font-family:var(--mono); font-size:.62rem; letter-spacing:.14em;
+  text-transform:uppercase; color:#9A8E85; display:block; margin:.55rem 0 .3rem;
+}
+.slot{
+  min-height:4rem; border:1px dashed var(--rule); border-radius:2px;
+  padding:.35rem; display:flex;
+  transition:border-color .14s,background .14s;
+  background:rgba(242,238,232,.55);
+}
+.slot.is-target{border-color:var(--garnet-soft);background:rgba(227,135,146,.1)}
+.slot .card{max-width:none;width:100%;cursor:pointer;box-shadow:none}
+.slot .card:hover{transform:none;box-shadow:0 2px 6px rgba(78,10,11,.1)}
+.slot.is-correct{border-style:solid;border-color:var(--khaki);background:rgba(157,173,113,.13)}
+.slot.is-correct .card{border-color:var(--khaki);border-left-color:var(--khaki-deep);background:#fff}
+.slot.is-wrong{border-style:solid;border-color:var(--rose);background:rgba(227,135,146,.14);animation:nudge .3s ease}
+.slot.is-wrong .card{border-color:var(--rose);border-left-color:var(--garnet)}
+
+/* ------------------------------------------------------------- buckets --- */
+.dropzone{
+  margin:0 1rem; min-height:3.6rem; padding:.5rem;
+  border:1px dashed var(--rule); border-radius:2px;
+  background:rgba(242,238,232,.55);
+  display:flex; flex-direction:column; gap:.4rem;
+  transition:border-color .14s,background .14s;
+}
+.dropzone.is-target{border-color:var(--garnet-soft);background:rgba(227,135,146,.1)}
+.dropzone .card{max-width:none;width:100%;cursor:pointer;box-shadow:none;font-size:.79rem}
+.dropzone .card:hover{transform:none;box-shadow:0 2px 6px rgba(78,10,11,.1)}
+.dropzone-empty{font-size:.75rem;color:#A99D94;font-style:italic;margin:auto;text-align:center}
+.card.is-correct{border-color:var(--khaki);border-left-color:var(--khaki-deep);background:#fff}
+.card.is-wrong{border-color:var(--rose);border-left-color:var(--garnet);background:rgba(227,135,146,.1)}
+
+.mark{
+  font-family:var(--mono); font-size:.68rem; letter-spacing:.08em;
+  margin-top:.28rem; min-height:1rem; display:block;
+}
+.mark.ok{color:var(--khaki-deep)}
+.mark.no{color:var(--garnet)}
+
+@keyframes nudge{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+
+/* ------------------------------------------------------------ controls --- */
+.controls{
+  max-width:1180px; margin:2.2rem auto 0; padding:1.2rem 1.5rem 0;
+  border-top:1px solid var(--rule); display:flex; flex-wrap:wrap;
+  gap:.6rem; align-items:center;
+}
+button.act{
+  font-family:var(--body); font-size:.84rem; padding:.55rem 1.1rem;
+  border-radius:2px; border:1px solid var(--garnet);
+  background:var(--garnet); color:#fff; cursor:pointer;
+  transition:background .15s,color .15s;
+}
+button.act:hover{background:var(--garnet-soft);border-color:var(--garnet-soft)}
+button.act.ghost{background:transparent;color:var(--garnet)}
+button.act.ghost:hover{background:rgba(78,10,11,.07);color:var(--garnet)}
+button.act:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+
+.verdict{
+  max-width:1180px; margin:1.1rem auto 0; padding:0 1.5rem;
+  font-size:.9rem; min-height:1.5rem; color:var(--garnet);
+}
+.verdict.win{color:var(--khaki-deep);font-weight:600}
+
+.footnote{
+  max-width:1180px; margin:2.4rem auto 0; padding:1.1rem 1.5rem 0;
+  border-top:1px solid var(--rule); font-size:.82rem; color:#6B5F57;
+}
+.footnote strong{color:var(--garnet)}
+
+@media (max-width:640px){
+  .masthead h1{font-size:1.2rem}
+  main,.controls,.rounds,.verdict,.footnote{padding-left:1rem;padding-right:1rem}
+  .card{max-width:none;width:100%}
+  .board,.board.wide,.board.pair{grid-template-columns:1fr}
+  .track .concept{flex-wrap:wrap}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms !important;transition-duration:.01ms !important}
+}
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="masthead-inner">
+    <div class="title-block">
+      <p class="eyebrow">AIF-C01 · Domain 1 · Task Statement 1.3 (objectives 1.3.1–1.3.3)</p>
+      <h1>Lifecycle Card Match</h1>
+    </div>
+    <div class="tally" id="tally">Placed <b id="placedCount">0</b> / <b id="totalCount">9</b></div>
+  </div>
+</header>
+
+<nav class="rounds" role="tablist" aria-label="Rounds">
+  <button class="round-tab" role="tab" aria-selected="true"  data-round="sequence">Sequence the pipeline <span class="tab-count">9</span></button>
+  <button class="round-tab" role="tab" aria-selected="false" data-round="stages">What happens at each stage <span class="tab-count">9</span></button>
+  <button class="round-tab" role="tab" aria-selected="false" data-round="tradfm">Traditional ML or FM? <span class="tab-count">12</span></button>
+  <button class="round-tab" role="tab" aria-selected="false" data-round="drift">Data drift or model drift? <span class="tab-count">4</span></button>
+  <button class="round-tab" role="tab" aria-selected="false" data-round="sources">Sources of FMs <span class="tab-count">9</span></button>
+  <button class="round-tab" role="tab" aria-selected="false" data-round="deploy">Deploying a model <span class="tab-count">8</span></button>
+</nav>
+
+<main>
+  <p class="round-intro" id="roundIntro"></p>
+
+  <div class="bank-head">
+    <h2>Loose cards</h2>
+    <span class="hint">Click a card, then click where it goes. Or drag it. Click a placed card to send it back.</span>
+  </div>
+  <div class="bank" id="bank" aria-label="Unplaced cards"></div>
+
+  <div class="board" id="board"></div>
+</main>
+
+<div class="controls">
+  <button class="act" id="btnCheck">Check answers</button>
+  <button class="act ghost" id="btnShuffle">Shuffle cards</button>
+  <button class="act ghost" id="btnClear">Clear board</button>
+  <button class="act ghost" id="btnReveal">Show me the answers</button>
+</div>
+
+<p class="verdict" id="verdict"></p>
+
+<div class="footnote" id="footnote"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  const ROUNDS = {
+
+    /* -------------------------------------------------- 1. sequence --- */
+    sequence:{
+      mode:"slots",
+      track:true,
+      intro:"Nine stages, and before anything else: can you put them back in order? Each position below just needs the right stage name — no descriptions yet, only sequence. This is the part of 1.3.1 that reads easiest and tests worst under exam pressure.",
+      footnote:"<strong>Worth knowing:</strong> stages 2 to 7 are typically iterative rather than linear in practice — teams loop back to exploration and pre-processing as they learn from training and evaluation. The exam still expects the canonical order shown here.",
+      slotTypes:[
+        {key:"stage", label:"Which stage goes here?"}
+      ],
+      concepts:[
+        {id:"p1", name:"Step", stage:"Data collection"},
+        {id:"p2", name:"Step", stage:"Exploratory data analysis (EDA)"},
+        {id:"p3", name:"Step", stage:"Data pre-processing"},
+        {id:"p4", name:"Step", stage:"Feature engineering"},
+        {id:"p5", name:"Step", stage:"Model training"},
+        {id:"p6", name:"Step", stage:"Hyperparameter tuning"},
+        {id:"p7", name:"Step", stage:"Evaluation"},
+        {id:"p8", name:"Step", stage:"Deployment"},
+        {id:"p9", name:"Step", stage:"Monitoring and retraining"}
+      ]
+    },
+
+    /* ---------------------------------------------------- 2. stages --- */
+    stages:{
+      mode:"slots",
+      intro:"Same nine stages, now shown in their correct order. This round tests whether you know what actually happens at each one — matching the definition, not the sequence.",
+      footnote:"<strong>New in v1.1:</strong> objective 1.3.1 now asks you to \u2018describe and differentiate\u2019 pipeline components, not just list them — which is exactly what the next round tests directly.",
+      slotTypes:[
+        {key:"def", label:"What happens at this stage"}
+      ],
+      concepts:[
+        {id:"collect",  name:"1. Data collection",
+          def:"Gather raw data from source systems, logs, documents, sensors. Establish ownership and access."},
+        {id:"eda",      name:"2. Exploratory data analysis (EDA)",
+          def:"Understand distributions, missing values, outliers, class balance and obvious leakage."},
+        {id:"preproc",  name:"3. Data pre-processing",
+          def:"Clean, deduplicate, handle missing values, normalise, split into training, validation and test sets."},
+        {id:"feateng",  name:"4. Feature engineering",
+          def:"Create and select the input variables the model will actually learn from."},
+        {id:"train",    name:"5. Model training",
+          def:"Run the algorithm over the training set to learn parameters."},
+        {id:"tune",     name:"6. Hyperparameter tuning",
+          def:"Search configuration settings to improve validation performance."},
+        {id:"eval",     name:"7. Evaluation",
+          def:"Measure performance on held-out data using appropriate metrics."},
+        {id:"deploy",   name:"8. Deployment",
+          def:"Serve the model for real-time, batch, asynchronous or serverless inference."},
+        {id:"monitor",  name:"9. Monitoring and retraining",
+          def:"Watch for data drift, model drift and quality degradation; retrain on a trigger or schedule."}
+      ]
+    },
+
+    /* ---------------------------------------------------- 3. tradfm --- */
+    tradfm:{
+      mode:"buckets",
+      intro:"Six dimensions, each described twice — once for a traditional ML pipeline, once for a foundation model pipeline. Sort each description into the pipeline it actually describes. This is objective 1.3.1's differentiation requirement, tested directly.",
+      footnote:"<strong>The pattern to notice:</strong> traditional ML centres on your labelled data and your training run. Foundation model pipelines centre on someone else's pre-training, with your effort shifting to prompts, retrieval and evaluating behaviour you didn't train.",
+      targets:[
+        {id:"trad", name:"Traditional ML pipeline", sub:"You built the model from your own data"},
+        {id:"fm",   name:"Foundation model pipeline", sub:"You are building around someone else's model"}
+      ],
+      items:[
+        {id:"d1", target:"trad", text:"Your labelled dataset is the whole basis of the model."},
+        {id:"d2", target:"fm",   text:"The provider's pre-training corpus does the heavy lifting. Your data is used for grounding (RAG) or customisation."},
+
+        {id:"t1", target:"trad", text:"You train the model from scratch on your data."},
+        {id:"t2", target:"fm",   text:"You usually do not train. You select a pre-trained FM and optionally customise it."},
+
+        {id:"f1", target:"trad", text:"Feature engineering is central and time-consuming."},
+        {id:"f2", target:"fm",   text:"Feature engineering is largely replaced by prompt design, context engineering and retrieval."},
+
+        {id:"e1", target:"trad", text:"Evaluated with accuracy, precision, recall, F1, RMSE against ground truth."},
+        {id:"e2", target:"fm",   text:"Evaluated with ROUGE, BLEU, BERTScore, human evaluation, LLM-as-a-judge, plus business metrics."},
+
+        {id:"p1", target:"trad", text:"Deployment means hosting an endpoint or running batch jobs."},
+        {id:"p2", target:"fm",   text:"Deployment means calling a managed API such as Amazon Bedrock, or self-hosting."},
+
+        {id:"m1", target:"trad", text:"Monitoring watches for data drift, model drift, prediction distribution."},
+        {id:"m2", target:"fm",   text:"Monitoring watches hallucination rate, groundedness, toxicity, cost per interaction, latency."}
+      ]
+    },
+
+    /* ------------------------------------------------------ 4. drift --- */
+    drift:{
+      mode:"buckets",
+      intro:"Two kinds of drift, four scenarios — two you may already recognise from objective 1.3.5, two new ones from this section. Data drift changes what arrives. Model drift changes what it means once it arrives.",
+      footnote:"<strong>Data drift:</strong> the incoming data looks different from training. <strong>Model drift (concept drift):</strong> the relationship between the data and the right answer has changed, even when the data itself looks normal.",
+      targets:[
+        {id:"data",  name:"Data drift", sub:"The input distribution has changed"},
+        {id:"model", name:"Model drift (concept drift)", sub:"What the input means has changed"}
+      ],
+      items:[
+        {id:"g1", target:"data",  text:"Your customers are younger than they were."},
+        {id:"g2", target:"model", text:"What predicts fraud today is not what predicted it last year."},
+        {id:"g3", target:"data",  text:"A fraud model trained mainly on in-store purchases faces a shift as most customers begin shopping online."},
+        {id:"g4", target:"model", text:"A churn model wrongly flags customers who use their cards less often, after digital wallets become more common."}
+      ]
+    },
+
+    /* --------------------------------------------------- 5. sources --- */
+    sources:{
+      mode:"slots",
+      intro:"Three ways a foundation model can enter your system, each with a genuinely different tradeoff. The exam almost always wants the first one, and this round makes it obvious why.",
+      footnote:"<strong>Common mistake:</strong> training a foundation model from scratch is almost never the correct exam answer. It appears as a distractor in cost questions specifically because it is the most expensive option. Unless the stem explicitly says the organisation requires a model trained solely on its own proprietary corpus and has the budget and expertise, choose a pre-trained model.",
+      slotTypes:[
+        {key:"means",    label:"What it means"},
+        {key:"aws",      label:"On AWS"},
+        {key:"tradeoff", label:"Tradeoff"}
+      ],
+      concepts:[
+        {id:"proprietary", name:"Proprietary FM via managed API",
+          means:"A commercial model you access but do not own or host.",
+          aws:"Amazon Bedrock: Amazon Nova, Anthropic Claude, Meta Llama, Mistral, Cohere and others through one API.",
+          tradeoff:"Fastest to production, no infrastructure, but you accept the provider's model and licensing."},
+        {id:"opensource", name:"Open-source pre-trained model",
+          means:"Publicly available weights you can inspect, host and modify.",
+          aws:"Amazon SageMaker JumpStart provides open models ready to deploy; Bedrock Custom Model Import brings supported open weights into Bedrock.",
+          tradeoff:"Control and transparency, in exchange for operating the infrastructure."},
+        {id:"custom", name:"Custom-trained model",
+          means:"You pre-train a model on your own corpus from scratch.",
+          aws:"Amazon SageMaker AI training infrastructure.",
+          tradeoff:"Maximum control, by far the highest cost and skill requirement. Rarely the right answer at practitioner level."}
+      ]
+    },
+
+    /* ----------------------------------------------------- 6. deploy --- */
+    deploy:{
+      mode:"slots",
+      intro:"Two ways to put a model into production. A third option is hiding underneath them once you notice where SageMaker AI endpoints and self-hosting on EC2 or EKS actually sit.",
+      footnote:"<strong>Remember for the exam:</strong> Amazon Bedrock is the canonical managed API answer — serverless, no infrastructure, token-based pricing. Amazon SageMaker AI endpoints sit in between: AWS manages the plumbing but you choose and pay for instances. Deploying a model onto Amazon EC2 or Amazon EKS yourself is the self-hosted answer. Cost, control and operational burden increase from left to right.",
+      slotTypes:[
+        {key:"description", label:"Description"},
+        {key:"youManage",   label:"You manage"},
+        {key:"awsManages",  label:"AWS manages"},
+        {key:"bestWhen",    label:"Best when"}
+      ],
+      concepts:[
+        {id:"managed", name:"Managed API service",
+          description:"Call a hosted model over an API. No servers involved.",
+          youManage:"Your prompts, data and application code.",
+          awsManages:"Model hosting, scaling, patching, availability.",
+          bestWhen:"Speed to market, variable load, no ML operations team."},
+        {id:"selfhosted", name:"Self-hosted API",
+          description:"You deploy the model onto compute you control and expose your own endpoint.",
+          youManage:"Instances, containers, scaling, patching, model updates.",
+          awsManages:"The underlying infrastructure only.",
+          bestWhen:"You need a specific model, custom runtime, or strict placement control."}
+      ]
+    }
+  };
+
+  const bank       = document.getElementById("bank");
+  const board      = document.getElementById("board");
+  const verdict    = document.getElementById("verdict");
+  const roundIntro = document.getElementById("roundIntro");
+  const footnote   = document.getElementById("footnote");
+  const placedEl   = document.getElementById("placedCount");
+  const totalEl    = document.getElementById("totalCount");
+
+  let currentRound = "sequence";
+  let held = null;
+  let checked = false;
+
+  function shuffle(arr){
+    const a = arr.slice();
+    for(let i=a.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [a[i],a[j]] = [a[j],a[i]];
+    }
+    return a;
+  }
+  function R(){ return ROUNDS[currentRound]; }
+  function isBuckets(){ return R().mode === "buckets"; }
+
+  function allCards(){
+    const r = R();
+    if(r.mode === "buckets"){
+      return r.items.map(it=>({ id:it.id, kind:"scenario", text:it.text }));
+    }
+    const out = [];
+    r.concepts.forEach(c=>{
+      r.slotTypes.forEach(t=>{
+        out.push({ id:c.id+"|"+t.key, kind:t.key, text:c[t.key] });
+      });
+    });
+    return out;
+  }
+  function cardById(id){ return allCards().find(c=>c.id===id) || null; }
+
+  function expectedTargetsFor(cardId){
+    const r = R();
+    if(r.mode !== "buckets") return [];
+    const it = r.items.find(i=>i.id===cardId);
+    if(!it) return [];
+    if(it.targets) return it.targets;
+    return [it.target];
+  }
+  function primaryTargetFor(cardId){
+    const r = R();
+    if(r.mode !== "buckets") return null;
+    const it = r.items.find(i=>i.id===cardId);
+    if(!it) return null;
+    return it.primary || it.target || (it.targets && it.targets[0]) || null;
+  }
+
+  /* --------------------------------------------------------- card build */
+  function makeCardEl(card){
+    const el = document.createElement("button");
+    el.type = "button";
+    el.className = "card";
+    el.dataset.cardId = card.id;
+    el.dataset.kind = card.kind;
+    el.draggable = true;
+    el.textContent = card.text;
+
+    el.addEventListener("click", function(ev){
+      ev.stopPropagation();
+      const p = el.parentElement;
+      if(p && (p.classList.contains("slot") || p.classList.contains("dropzone"))){
+        returnToBank(el);
+      }else{
+        toggleHold(card.id, el);
+      }
+    });
+    el.addEventListener("dragstart", function(ev){
+      held = card.id;
+      el.classList.add("is-dragging");
+      try{ ev.dataTransfer.setData("text/plain", card.id); }catch(e){}
+      ev.dataTransfer.effectAllowed = "move";
+    });
+    el.addEventListener("dragend", function(){
+      el.classList.remove("is-dragging");
+      clearHeldStyles();
+      held = null;
+    });
+    return el;
+  }
+
+  function clearHeldStyles(){
+    document.querySelectorAll(".card.is-held").forEach(c=>c.classList.remove("is-held"));
+  }
+  function toggleHold(id, el){
+    if(held === id){ held=null; clearHeldStyles(); return; }
+    held = id; clearHeldStyles(); el.classList.add("is-held");
+  }
+
+  /* ------------------------------------------------------------- render */
+  function render(){
+    const r = R();
+    roundIntro.textContent = r.intro;
+    footnote.innerHTML = r.footnote;
+
+    let cls = "board";
+    if(r.mode === "buckets"){ cls += r.targets.length <= 2 ? " pair" : " wide"; }
+    if(r.track){ cls += " track"; }
+    board.className = cls;
+
+    totalEl.textContent = allCards().length;
+
+    board.innerHTML = "";
+    if(r.mode === "buckets") renderBuckets(r); else renderSlots(r);
+
+    fillBank(allCards());
+    clearAllMarks();
+    updateTally();
+  }
+
+  function renderSlots(r){
+    r.concepts.forEach((c,i)=>{
+      const wrap = document.createElement("section");
+      wrap.className = "concept";
+      wrap.appendChild(conceptHead(i, c.name, null));
+
+      r.slotTypes.forEach(t=>{
+        const sw = document.createElement("div");
+        sw.className = "slot-wrap";
+
+        const lab = document.createElement("span");
+        lab.className = "slot-label";
+        lab.textContent = t.label;
+
+        const slot = document.createElement("div");
+        slot.className = "slot";
+        slot.dataset.expects = c.id+"|"+t.key;
+        slot.tabIndex = 0;
+        slot.setAttribute("role","group");
+        slot.setAttribute("aria-label", c.name+" — "+t.label);
+
+        slot.addEventListener("click", function(){ placeIntoSlot(slot); });
+        slot.addEventListener("keydown", function(ev){
+          if(ev.key==="Enter"||ev.key===" "){ ev.preventDefault(); placeIntoSlot(slot); }
+        });
+        wireDrop(slot, function(){ placeIntoSlot(slot); });
+
+        const mark = document.createElement("span");
+        mark.className = "mark";
+
+        sw.appendChild(lab); sw.appendChild(slot); sw.appendChild(mark);
+        wrap.appendChild(sw);
+      });
+      board.appendChild(wrap);
+    });
+  }
+
+  function renderBuckets(r){
+    r.targets.forEach((t,i)=>{
+      const wrap = document.createElement("section");
+      wrap.className = "concept";
+      wrap.appendChild(conceptHead(i, t.name, t.sub));
+
+      const zone = document.createElement("div");
+      zone.className = "dropzone";
+      zone.dataset.bucket = t.id;
+      zone.tabIndex = 0;
+      zone.setAttribute("role","group");
+      zone.setAttribute("aria-label", t.name);
+
+      zone.addEventListener("click", function(){ placeIntoBucket(zone); });
+      zone.addEventListener("keydown", function(ev){
+        if(ev.key==="Enter"||ev.key===" "){ ev.preventDefault(); placeIntoBucket(zone); }
+      });
+      wireDrop(zone, function(){ placeIntoBucket(zone); });
+
+      wrap.appendChild(zone);
+
+      const mark = document.createElement("span");
+      mark.className = "mark";
+      mark.style.padding = "0 1rem";
+      wrap.appendChild(mark);
+
+      board.appendChild(wrap);
+      refreshZoneEmpty(zone);
+    });
+  }
+
+  function conceptHead(i, name, sub){
+    const head = document.createElement("div");
+    head.className = "concept-head";
+    const idx = document.createElement("span");
+    idx.className = "concept-index";
+    idx.textContent = String(i+1).padStart(2,"0");
+    const nm = document.createElement("h3");
+    nm.className = "concept-name";
+    nm.textContent = name;
+    head.appendChild(idx); head.appendChild(nm);
+    if(sub){
+      const s = document.createElement("p");
+      s.className = "concept-sub";
+      s.textContent = sub;
+      head.appendChild(s);
+    }
+    return head;
+  }
+
+  function wireDrop(node, onDrop){
+    node.addEventListener("dragover", function(ev){ ev.preventDefault(); node.classList.add("is-target"); });
+    node.addEventListener("dragleave", function(){ node.classList.remove("is-target"); });
+    node.addEventListener("drop", function(ev){
+      ev.preventDefault();
+      node.classList.remove("is-target");
+      let id="";
+      try{ id = ev.dataTransfer.getData("text/plain"); }catch(e){}
+      if(!id) id = held;
+      if(id){ held = id; onDrop(); }
+    });
+  }
+
+  function fillBank(cards){
+    bank.innerHTML = "";
+    shuffle(cards).forEach(c=> bank.appendChild(makeCardEl(c)) );
+    refreshBankEmpty();
+  }
+  function refreshBankEmpty(){
+    const has = bank.querySelector(".card");
+    const msg = bank.querySelector(".bank-empty");
+    if(!has && !msg){
+      const p = document.createElement("p");
+      p.className = "bank-empty";
+      p.textContent = "All cards placed. Check your answers below.";
+      bank.appendChild(p);
+    }
+    if(has && msg) msg.remove();
+  }
+  function refreshZoneEmpty(zone){
+    const has = zone.querySelector(".card");
+    const msg = zone.querySelector(".dropzone-empty");
+    if(!has && !msg){
+      const p = document.createElement("p");
+      p.className = "dropzone-empty";
+      p.textContent = "Drop scenarios here";
+      zone.appendChild(p);
+    }
+    if(has && msg) msg.remove();
+  }
+  function refreshAllZones(){ board.querySelectorAll(".dropzone").forEach(refreshZoneEmpty); }
+
+  /* ---------------------------------------------------------- placement */
+  function heldEl(){
+    if(!held) return null;
+    return document.querySelector('.card[data-card-id="'+CSS.escape(held)+'"]');
+  }
+
+  function placeIntoSlot(slot){
+    const el = heldEl();
+    if(!el) return;
+    const existing = slot.querySelector(".card");
+    if(existing && existing !== el) bank.appendChild(existing);
+    slot.appendChild(el);
+    el.classList.remove("is-held");
+    held = null;
+    clearSlotState(slot);
+    refreshBankEmpty(); updateTally();
+    if(checked) clearAllMarks();
+  }
+
+  function placeIntoBucket(zone){
+    const el = heldEl();
+    if(!el) return;
+    const prev = el.parentElement;
+    zone.appendChild(el);
+    el.classList.remove("is-held","is-correct","is-wrong");
+    held = null;
+    if(prev && prev.classList.contains("dropzone")) refreshZoneEmpty(prev);
+    refreshZoneEmpty(zone);
+    refreshBankEmpty(); updateTally();
+    if(checked) clearAllMarks();
+  }
+
+  function returnToBank(el){
+    const parent = el.parentElement;
+    bank.appendChild(el);
+    el.classList.remove("is-correct","is-wrong");
+    if(parent){
+      if(parent.classList.contains("slot")) clearSlotState(parent);
+      if(parent.classList.contains("dropzone")) refreshZoneEmpty(parent);
+    }
+    held = null; clearHeldStyles();
+    refreshBankEmpty(); updateTally();
+    if(checked) clearAllMarks();
+  }
+
+  function clearSlotState(slot){
+    slot.classList.remove("is-correct","is-wrong");
+    const m = slot.parentElement.querySelector(".mark");
+    if(m){ m.textContent=""; m.className="mark"; }
+  }
+
+  function clearAllMarks(){
+    checked = false;
+    board.querySelectorAll(".slot").forEach(clearSlotState);
+    board.querySelectorAll(".mark").forEach(m=>{ m.textContent=""; m.className="mark"; if(m.parentElement.classList.contains("concept")) m.style.padding="0 1rem"; });
+    board.querySelectorAll(".card").forEach(c=>c.classList.remove("is-correct","is-wrong"));
+    verdict.textContent = ""; verdict.className = "verdict";
+  }
+
+  function updateTally(){
+    const n = board.querySelectorAll(".slot .card, .dropzone .card").length;
+    placedEl.textContent = n;
+  }
+
+  /* ------------------------------------------------------------- check */
+  function check(){
+    return isBuckets() ? checkBuckets() : checkSlots();
+  }
+
+  function checkSlots(){
+    const slots = Array.from(board.querySelectorAll(".slot"));
+    let right = 0, filled = 0;
+    slots.forEach(slot=>{
+      const el = slot.querySelector(".card");
+      const mark = slot.parentElement.querySelector(".mark");
+      slot.classList.remove("is-correct","is-wrong");
+      if(!el){ mark.textContent=""; mark.className="mark"; return; }
+      filled++;
+      if(el.dataset.cardId === slot.dataset.expects){
+        right++; slot.classList.add("is-correct");
+        mark.textContent="Correct"; mark.className="mark ok";
+      }else{
+        slot.classList.add("is-wrong");
+        mark.textContent="Not this one — click it to send it back";
+        mark.className="mark no";
+      }
+    });
+    finishCheck(right, slots.length, filled);
+  }
+
+  function checkBuckets(){
+    const zones = Array.from(board.querySelectorAll(".dropzone"));
+    let right = 0, filled = 0;
+    const total = allCards().length;
+
+    zones.forEach(zone=>{
+      const cards = Array.from(zone.querySelectorAll(".card"));
+      let zoneRight = 0;
+      cards.forEach(el=>{
+        filled++;
+        const valid = expectedTargetsFor(el.dataset.cardId);
+        el.classList.remove("is-correct","is-wrong");
+        if(valid.indexOf(zone.dataset.bucket) !== -1){ right++; zoneRight++; el.classList.add("is-correct"); }
+        else{ el.classList.add("is-wrong"); }
+      });
+      const mark = zone.parentElement.querySelector(".mark");
+      if(!cards.length){ mark.textContent=""; mark.className="mark"; }
+      else if(zoneRight === cards.length){
+        mark.textContent = "All " + cards.length + " correct";
+        mark.className = "mark ok";
+      }else{
+        mark.textContent = zoneRight + " of " + cards.length + " correct";
+        mark.className = "mark no";
+      }
+      mark.style.padding = "0 1rem";
+    });
+    finishCheck(right, total, filled);
+  }
+
+  function finishCheck(right, total, filled){
+    checked = true;
+    if(filled === 0){
+      verdict.textContent = "Place some cards first, then check.";
+      verdict.className = "verdict";
+    }else if(right === total){
+      verdict.textContent = "All " + total + " correct. Nothing left to fix in this round.";
+      verdict.className = "verdict win";
+    }else{
+      verdict.textContent = right + " of " + total + " correct. The marked cards are in the wrong place — click one to send it back.";
+      verdict.className = "verdict";
+    }
+  }
+
+  /* ----------------------------------------------------------- actions */
+  function clearBoard(){
+    board.querySelectorAll(".slot .card, .dropzone .card").forEach(el=>{
+      el.classList.remove("is-correct","is-wrong");
+      bank.appendChild(el);
+    });
+    board.querySelectorAll(".slot").forEach(clearSlotState);
+    refreshAllZones();
+    clearAllMarks();
+    refreshBankEmpty(); updateTally();
+  }
+
+  function reveal(){
+    clearBoard();
+    if(isBuckets()){
+      board.querySelectorAll(".dropzone").forEach(zone=>{
+        R().items.filter(it=> primaryTargetFor(it.id) === zone.dataset.bucket).forEach(it=>{
+          const el = document.querySelector('.card[data-card-id="'+CSS.escape(it.id)+'"]');
+          if(el){ zone.appendChild(el); el.classList.add("is-correct"); }
+        });
+        const mark = zone.parentElement.querySelector(".mark");
+        mark.textContent = "Answer"; mark.className = "mark ok"; mark.style.padding="0 1rem";
+      });
+      refreshAllZones();
+    }else{
+      board.querySelectorAll(".slot").forEach(slot=>{
+        const el = document.querySelector('.card[data-card-id="'+CSS.escape(slot.dataset.expects)+'"]');
+        if(el){
+          slot.appendChild(el);
+          slot.classList.add("is-correct");
+          const m = slot.parentElement.querySelector(".mark");
+          m.textContent = "Answer"; m.className = "mark ok";
+        }
+      });
+    }
+    checked = true;
+    refreshBankEmpty(); updateTally();
+    verdict.textContent = "Answers shown. Clear the board and try it again from memory.";
+    verdict.className = "verdict";
+  }
+
+  /* ------------------------------------------------------------ wiring */
+  document.getElementById("btnCheck").addEventListener("click", check);
+  document.getElementById("btnClear").addEventListener("click", clearBoard);
+  document.getElementById("btnReveal").addEventListener("click", reveal);
+  document.getElementById("btnShuffle").addEventListener("click", function(){
+    const loose = Array.from(bank.querySelectorAll(".card"))
+      .map(el=>cardById(el.dataset.cardId)).filter(Boolean);
+    fillBank(loose);
+  });
+
+  bank.addEventListener("click", function(){ if(held){ clearHeldStyles(); held=null; } });
+  wireDrop(bank, function(){
+    const el = heldEl();
+    if(!el) return;
+    const parent = el.parentElement;
+    bank.appendChild(el);
+    el.classList.remove("is-correct","is-wrong");
+    if(parent){
+      if(parent.classList.contains("slot")) clearSlotState(parent);
+      if(parent.classList.contains("dropzone")) refreshZoneEmpty(parent);
+    }
+    held = null;
+    refreshBankEmpty(); updateTally();
+  });
+
+  document.querySelectorAll(".round-tab").forEach(tab=>{
+    tab.addEventListener("click", function(){
+      document.querySelectorAll(".round-tab").forEach(t=>t.setAttribute("aria-selected","false"));
+      tab.setAttribute("aria-selected","true");
+      currentRound = tab.dataset.round;
+      held = null;
+      render();
+      window.scrollTo({top:0,behavior:"smooth"});
+    });
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

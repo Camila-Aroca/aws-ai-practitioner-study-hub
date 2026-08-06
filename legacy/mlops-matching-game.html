@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MLOps Card Match — AIF-C01 objective 1.3.5</title>
+<style>
+:root{
+  --garnet:#4E0A0B;
+  --garnet-soft:#7A2A29;
+  --ink:#1C1512;
+  --parchment:#F2EEE8;
+  --card:#FBF9F6;
+  --khaki:#9DAD71;
+  --khaki-deep:#5F7040;
+  --rose:#E38792;
+  --brass:#A88A4A;
+  --rule:#D9D0C5;
+
+  --display:'Iowan Old Style','Palatino Linotype',Palatino,'Book Antiqua',Georgia,serif;
+  --body:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,monospace;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--parchment);
+  color:var(--ink);
+  font-family:var(--body);
+  font-size:16px;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  padding:0 0 4rem;
+}
+
+/* ---------------------------------------------------------- masthead --- */
+.masthead{
+  border-bottom:2px solid var(--garnet);
+  background:var(--parchment);
+  position:sticky;
+  top:0;
+  z-index:50;
+}
+.masthead-inner{
+  max-width:1120px;
+  margin:0 auto;
+  padding:1.1rem 1.5rem .9rem;
+  display:flex;
+  flex-wrap:wrap;
+  align-items:baseline;
+  gap:.6rem 1.4rem;
+}
+.eyebrow{
+  font-family:var(--mono);
+  font-size:.66rem;
+  letter-spacing:.16em;
+  text-transform:uppercase;
+  color:var(--brass);
+  margin:0 0 .15rem;
+}
+.masthead h1{
+  font-family:var(--display);
+  font-size:1.55rem;
+  font-weight:600;
+  color:var(--garnet);
+  margin:0;
+  letter-spacing:-.01em;
+}
+.masthead .title-block{flex:1 1 260px}
+.tally{
+  font-family:var(--mono);
+  font-size:.78rem;
+  letter-spacing:.06em;
+  color:var(--garnet);
+  border:1px solid var(--rule);
+  background:var(--card);
+  padding:.4rem .7rem;
+  white-space:nowrap;
+}
+.tally b{font-weight:700}
+
+/* ------------------------------------------------------------- rounds --- */
+.rounds{
+  max-width:1120px;
+  margin:0 auto;
+  padding:1.1rem 1.5rem 0;
+  display:flex;
+  gap:.5rem;
+  flex-wrap:wrap;
+}
+.round-tab{
+  font-family:var(--body);
+  font-size:.82rem;
+  background:transparent;
+  border:1px solid var(--rule);
+  color:var(--garnet-soft);
+  padding:.45rem .9rem;
+  cursor:pointer;
+  border-radius:2px;
+  transition:background .15s,color .15s,border-color .15s;
+}
+.round-tab:hover{border-color:var(--garnet-soft)}
+.round-tab[aria-selected="true"]{
+  background:var(--garnet);
+  border-color:var(--garnet);
+  color:#fff;
+}
+.round-tab .tab-count{
+  font-family:var(--mono);
+  font-size:.7rem;
+  opacity:.7;
+  margin-left:.4rem;
+}
+
+/* --------------------------------------------------------------- shell --- */
+main{max-width:1120px;margin:0 auto;padding:1.4rem 1.5rem 0}
+.round-intro{
+  font-size:.9rem;
+  color:#5A4E47;
+  margin:0 0 1.4rem;
+  max-width:62ch;
+}
+
+/* ----------------------------------------------------------- card bank --- */
+.bank-head{
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  gap:1rem;
+  border-bottom:1px solid var(--rule);
+  padding-bottom:.4rem;
+  margin-bottom:.9rem;
+}
+.bank-head h2{
+  font-family:var(--mono);
+  font-size:.68rem;
+  letter-spacing:.16em;
+  text-transform:uppercase;
+  color:var(--brass);
+  font-weight:500;
+  margin:0;
+}
+.hint{font-size:.76rem;color:#8A7D74}
+
+.bank{
+  display:flex;
+  flex-wrap:wrap;
+  gap:.65rem;
+  min-height:5.5rem;
+  padding:.9rem;
+  background:rgba(255,255,255,.5);
+  border:1px dashed var(--rule);
+  margin-bottom:2.2rem;
+  align-content:flex-start;
+}
+.bank.is-target{border-color:var(--garnet-soft);background:rgba(227,135,146,.08)}
+.bank-empty{
+  font-size:.82rem;
+  color:#9A8E85;
+  font-style:italic;
+  margin:auto;
+}
+
+/* --------------------------------------------------------------- cards --- */
+.card{
+  font-family:var(--body);
+  font-size:.83rem;
+  line-height:1.42;
+  text-align:left;
+  background:var(--card);
+  border:1px solid var(--rule);
+  border-left:3px solid var(--rose);
+  border-radius:2px;
+  padding:.6rem .75rem;
+  max-width:19rem;
+  cursor:grab;
+  box-shadow:0 1px 0 rgba(78,10,11,.06);
+  transition:transform .14s ease,box-shadow .14s ease,border-color .14s ease;
+  color:var(--ink);
+  display:block;
+}
+.card:hover{transform:translateY(-2px);box-shadow:0 4px 10px rgba(78,10,11,.11)}
+.card:focus-visible{outline:2px solid var(--garnet);outline-offset:2px}
+.card.is-held{
+  border-color:var(--garnet);
+  border-left-color:var(--garnet);
+  box-shadow:0 0 0 2px rgba(78,10,11,.22),0 6px 14px rgba(78,10,11,.16);
+  transform:translateY(-2px);
+}
+.card.is-dragging{opacity:.4}
+.card[data-kind="why"]{border-left-color:var(--brass)}
+
+/* --------------------------------------------------------------- board --- */
+.board{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(330px,1fr));
+  gap:1.1rem;
+}
+.concept{
+  background:var(--card);
+  border:1px solid var(--rule);
+  border-top:3px solid var(--garnet);
+  border-radius:2px;
+  padding:0 0 .9rem;
+  box-shadow:0 1px 0 rgba(78,10,11,.05);
+}
+.concept-head{
+  padding:.8rem 1rem .55rem;
+  border-bottom:1px solid var(--rule);
+  margin-bottom:.8rem;
+}
+.concept-index{
+  font-family:var(--mono);
+  font-size:.66rem;
+  letter-spacing:.14em;
+  color:var(--brass);
+  display:block;
+  margin-bottom:.2rem;
+}
+.concept-name{
+  font-family:var(--display);
+  font-size:1.12rem;
+  font-weight:600;
+  color:var(--garnet);
+  margin:0;
+  line-height:1.25;
+}
+.slot-wrap{padding:0 1rem .1rem}
+.slot-label{
+  font-family:var(--mono);
+  font-size:.62rem;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:#9A8E85;
+  display:block;
+  margin:.55rem 0 .3rem;
+}
+.slot{
+  min-height:4.2rem;
+  border:1px dashed var(--rule);
+  border-radius:2px;
+  padding:.35rem;
+  display:flex;
+  transition:border-color .14s,background .14s;
+  background:rgba(242,238,232,.55);
+}
+.slot.is-target{border-color:var(--garnet-soft);background:rgba(227,135,146,.1)}
+.slot .card{max-width:none;width:100%;cursor:pointer;box-shadow:none}
+.slot .card:hover{transform:none;box-shadow:0 2px 6px rgba(78,10,11,.1)}
+
+.slot.is-correct{border-style:solid;border-color:var(--khaki);background:rgba(157,173,113,.13)}
+.slot.is-correct .card{border-color:var(--khaki);border-left-color:var(--khaki-deep);background:#fff}
+.slot.is-wrong{border-style:solid;border-color:var(--rose);background:rgba(227,135,146,.14)}
+.slot.is-wrong .card{border-color:var(--rose);border-left-color:var(--garnet)}
+.slot.is-wrong{animation:nudge .3s ease}
+@keyframes nudge{
+  0%,100%{transform:translateX(0)}
+  25%{transform:translateX(-4px)}
+  75%{transform:translateX(4px)}
+}
+.mark{
+  font-family:var(--mono);
+  font-size:.68rem;
+  letter-spacing:.08em;
+  margin-top:.28rem;
+  min-height:1rem;
+  display:block;
+}
+.mark.ok{color:var(--khaki-deep)}
+.mark.no{color:var(--garnet)}
+
+/* ------------------------------------------------------------ controls --- */
+.controls{
+  max-width:1120px;
+  margin:2.2rem auto 0;
+  padding:1.2rem 1.5rem 0;
+  border-top:1px solid var(--rule);
+  display:flex;
+  flex-wrap:wrap;
+  gap:.6rem;
+  align-items:center;
+}
+button.act{
+  font-family:var(--body);
+  font-size:.84rem;
+  padding:.55rem 1.1rem;
+  border-radius:2px;
+  border:1px solid var(--garnet);
+  background:var(--garnet);
+  color:#fff;
+  cursor:pointer;
+  transition:background .15s,color .15s;
+}
+button.act:hover{background:var(--garnet-soft);border-color:var(--garnet-soft)}
+button.act.ghost{background:transparent;color:var(--garnet);}
+button.act.ghost:hover{background:rgba(78,10,11,.07);color:var(--garnet)}
+button.act:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+button.act:disabled{opacity:.4;cursor:not-allowed}
+
+.verdict{
+  max-width:1120px;
+  margin:1.1rem auto 0;
+  padding:0 1.5rem;
+  font-size:.9rem;
+  min-height:1.5rem;
+  color:var(--garnet);
+}
+.verdict.win{color:var(--khaki-deep);font-weight:600}
+
+.footnote{
+  max-width:1120px;
+  margin:2.4rem auto 0;
+  padding:1.1rem 1.5rem 0;
+  border-top:1px solid var(--rule);
+  font-size:.82rem;
+  color:#6B5F57;
+  max-width:min(1120px,100%);
+}
+.footnote strong{color:var(--garnet)}
+
+@media (max-width:640px){
+  .masthead h1{font-size:1.25rem}
+  main,.controls,.rounds,.verdict,.footnote{padding-left:1rem;padding-right:1rem}
+  .card{max-width:none;width:100%}
+  .board{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms !important;transition-duration:.01ms !important}
+}
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="masthead-inner">
+    <div class="title-block">
+      <p class="eyebrow">AIF-C01 · Domain 1 · Objective 1.3.5</p>
+      <h1>MLOps Card Match</h1>
+    </div>
+    <div class="tally" id="tally">Placed <b id="placedCount">0</b> / <b id="totalCount">12</b></div>
+  </div>
+</header>
+
+<nav class="rounds" role="tablist" aria-label="Rounds">
+  <button class="round-tab" role="tab" aria-selected="true" data-round="mlops" id="tab-mlops">
+    The six MLOps concepts <span class="tab-count">12 cards</span>
+  </button>
+  <button class="round-tab" role="tab" aria-selected="false" data-round="drift" id="tab-drift">
+    Data drift vs model drift <span class="tab-count">4 cards</span>
+  </button>
+</nav>
+
+<main>
+  <p class="round-intro" id="roundIntro"></p>
+
+  <div class="bank-head">
+    <h2>Loose cards</h2>
+    <span class="hint">Click a card, then click a slot. Or drag it. Click a placed card to send it back.</span>
+  </div>
+  <div class="bank" id="bank" aria-label="Unplaced cards"></div>
+
+  <div class="board" id="board"></div>
+</main>
+
+<div class="controls">
+  <button class="act" id="btnCheck">Check answers</button>
+  <button class="act ghost" id="btnShuffle">Shuffle cards</button>
+  <button class="act ghost" id="btnClear">Clear board</button>
+  <button class="act ghost" id="btnReveal">Show me the answers</button>
+</div>
+
+<p class="verdict" id="verdict"></p>
+
+<div class="footnote">
+  <strong>Worth remembering:</strong> Amazon SageMaker Model Monitor detects both data-quality drift and
+  model-quality drift, so the same service covers both halves of round two. Detecting drift is a reason to
+  investigate, not an automatic instruction to retrain.
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  const ROUNDS = {
+    mlops:{
+      intro:"Six concepts, each with a definition and a reason it matters. The definitions are the easy half. The 'why it matters' cards are where the exam gets its distractors, so place those deliberately rather than by elimination.",
+      slotTypes:[
+        {key:"means", label:"What it means"},
+        {key:"why",   label:"Why it matters"}
+      ],
+      concepts:[
+        {id:"exp", name:"Experimentation",
+          means:"Tracking datasets, parameters, code versions and results so any run can be reproduced.",
+          why:"Without it you cannot explain why the model in production behaves as it does."},
+        {id:"rep", name:"Repeatable processes",
+          means:"Automated, versioned pipelines rather than manual notebooks.",
+          why:"A model you cannot rebuild is a model you cannot fix."},
+        {id:"sca", name:"Scalable systems",
+          means:"Infrastructure that handles growth in data volume, training frequency and inference traffic.",
+          why:"Prototypes that cannot scale never reach production."},
+        {id:"deb", name:"Managing technical debt",
+          means:"Controlling the accumulation of undocumented glue code, orphaned features and stale pipelines.",
+          why:"ML systems accumulate debt faster than ordinary software because data dependencies are invisible."},
+        {id:"prd", name:"Production readiness",
+          means:"Testing, monitoring, rollback, security review and documented ownership before launch.",
+          why:"A model that scores well offline can still be unfit to serve."},
+        {id:"mon", name:"Model monitoring and retraining",
+          means:"Watching for data drift and model drift and retraining on a trigger or schedule.",
+          why:"The world changes; a static model silently degrades."}
+      ]
+    },
+    drift:{
+      intro:"Only four cards, and they are the four most swapped items in this objective. The test is whether the inputs changed or whether the meaning of the inputs changed.",
+      slotTypes:[
+        {key:"means", label:"What has changed"},
+        {key:"why",   label:"Example"}
+      ],
+      concepts:[
+        {id:"dd", name:"Data drift",
+          means:"The distribution of the incoming features has changed.",
+          why:"Your customers are younger than they were."},
+        {id:"md", name:"Model drift (concept drift)",
+          means:"The relationship between the features and the target has changed.",
+          why:"What predicts fraud today is not what predicted it last year."}
+      ]
+    }
+  };
+
+  const bank      = document.getElementById("bank");
+  const board     = document.getElementById("board");
+  const verdict   = document.getElementById("verdict");
+  const roundIntro= document.getElementById("roundIntro");
+  const placedEl  = document.getElementById("placedCount");
+  const totalEl   = document.getElementById("totalCount");
+
+  let currentRound = "mlops";
+  let held = null;          // id of the card currently picked up
+  let checked = false;
+
+  /* ------------------------------------------------------------ helpers */
+  function shuffle(arr){
+    const a = arr.slice();
+    for(let i=a.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [a[i],a[j]] = [a[j],a[i]];
+    }
+    return a;
+  }
+
+  function roundData(){ return ROUNDS[currentRound]; }
+
+  function allCards(){
+    const r = roundData();
+    const out = [];
+    r.concepts.forEach(c=>{
+      r.slotTypes.forEach(t=>{
+        out.push({ id:c.id+"|"+t.key, kind:t.key, text:c[t.key] });
+      });
+    });
+    return out;
+  }
+
+  function cardById(id){
+    return allCards().find(c=>c.id===id) || null;
+  }
+
+  /* -------------------------------------------------------- build cards */
+  function makeCardEl(card){
+    const el = document.createElement("button");
+    el.type = "button";
+    el.className = "card";
+    el.dataset.cardId = card.id;
+    el.dataset.kind = card.kind;
+    el.draggable = true;
+    el.textContent = card.text;
+    el.setAttribute("aria-label", card.text);
+
+    el.addEventListener("click", function(ev){
+      ev.stopPropagation();
+      const inSlot = el.parentElement && el.parentElement.classList.contains("slot");
+      if(inSlot){
+        returnToBank(el);
+      }else{
+        toggleHold(card.id, el);
+      }
+    });
+
+    el.addEventListener("dragstart", function(ev){
+      held = card.id;
+      el.classList.add("is-dragging");
+      try{ ev.dataTransfer.setData("text/plain", card.id); }catch(e){}
+      ev.dataTransfer.effectAllowed = "move";
+    });
+    el.addEventListener("dragend", function(){
+      el.classList.remove("is-dragging");
+      clearHeldStyles();
+      held = null;
+    });
+
+    return el;
+  }
+
+  function clearHeldStyles(){
+    document.querySelectorAll(".card.is-held").forEach(c=>c.classList.remove("is-held"));
+  }
+
+  function toggleHold(id, el){
+    if(held === id){
+      held = null;
+      clearHeldStyles();
+      return;
+    }
+    held = id;
+    clearHeldStyles();
+    el.classList.add("is-held");
+  }
+
+  /* ------------------------------------------------------------- render */
+  function render(){
+    const r = roundData();
+    roundIntro.textContent = r.intro;
+    totalEl.textContent = r.concepts.length * r.slotTypes.length;
+
+    board.innerHTML = "";
+    r.concepts.forEach((c, i)=>{
+      const wrap = document.createElement("section");
+      wrap.className = "concept";
+
+      const head = document.createElement("div");
+      head.className = "concept-head";
+      const idx = document.createElement("span");
+      idx.className = "concept-index";
+      idx.textContent = String(i+1).padStart(2,"0");
+      const nm = document.createElement("h3");
+      nm.className = "concept-name";
+      nm.textContent = c.name;
+      head.appendChild(idx);
+      head.appendChild(nm);
+      wrap.appendChild(head);
+
+      r.slotTypes.forEach(t=>{
+        const sw = document.createElement("div");
+        sw.className = "slot-wrap";
+
+        const lab = document.createElement("span");
+        lab.className = "slot-label";
+        lab.textContent = t.label;
+
+        const slot = document.createElement("div");
+        slot.className = "slot";
+        slot.dataset.expects = c.id+"|"+t.key;
+        slot.setAttribute("role","group");
+        slot.setAttribute("aria-label", c.name+" — "+t.label);
+        slot.tabIndex = 0;
+
+        slot.addEventListener("click", function(){ placeIntoSlot(slot); });
+        slot.addEventListener("keydown", function(ev){
+          if(ev.key === "Enter" || ev.key === " "){
+            ev.preventDefault();
+            placeIntoSlot(slot);
+          }
+        });
+        slot.addEventListener("dragover", function(ev){
+          ev.preventDefault();
+          slot.classList.add("is-target");
+        });
+        slot.addEventListener("dragleave", function(){ slot.classList.remove("is-target"); });
+        slot.addEventListener("drop", function(ev){
+          ev.preventDefault();
+          slot.classList.remove("is-target");
+          let id = "";
+          try{ id = ev.dataTransfer.getData("text/plain"); }catch(e){}
+          if(!id) id = held;
+          if(id){ held = id; placeIntoSlot(slot); }
+        });
+
+        const mark = document.createElement("span");
+        mark.className = "mark";
+
+        sw.appendChild(lab);
+        sw.appendChild(slot);
+        sw.appendChild(mark);
+        wrap.appendChild(sw);
+      });
+
+      board.appendChild(wrap);
+    });
+
+    fillBank(allCards());
+    resetMarks();
+    updateTally();
+  }
+
+  function fillBank(cards){
+    bank.innerHTML = "";
+    const shuffled = shuffle(cards);
+    shuffled.forEach(c=> bank.appendChild(makeCardEl(c)) );
+    refreshBankEmpty();
+  }
+
+  function refreshBankEmpty(){
+    const has = bank.querySelector(".card");
+    const msg = bank.querySelector(".bank-empty");
+    if(!has && !msg){
+      const p = document.createElement("p");
+      p.className = "bank-empty";
+      p.textContent = "All cards placed. Check your answers below.";
+      bank.appendChild(p);
+    }
+    if(has && msg){ msg.remove(); }
+  }
+
+  /* -------------------------------------------------------- placement  */
+  function placeIntoSlot(slot){
+    if(!held) return;
+    const el = document.querySelector('.card[data-card-id="'+CSS.escape(held)+'"]');
+    if(!el) return;
+
+    // If the slot already holds a card, send that one back to the bank first.
+    const existing = slot.querySelector(".card");
+    if(existing && existing !== el){
+      bank.appendChild(existing);
+    }
+    slot.appendChild(el);
+    el.classList.remove("is-held");
+    held = null;
+    clearSlotState(slot);
+    refreshBankEmpty();
+    updateTally();
+    if(checked){ clearAllMarks(); }
+  }
+
+  function returnToBank(el){
+    const slot = el.parentElement;
+    bank.appendChild(el);
+    if(slot && slot.classList.contains("slot")) clearSlotState(slot);
+    held = null;
+    clearHeldStyles();
+    refreshBankEmpty();
+    updateTally();
+    if(checked){ clearAllMarks(); }
+  }
+
+  function clearSlotState(slot){
+    slot.classList.remove("is-correct","is-wrong");
+    const m = slot.parentElement.querySelector(".mark");
+    if(m){ m.textContent=""; m.className="mark"; }
+  }
+
+  function clearAllMarks(){
+    checked = false;
+    document.querySelectorAll(".slot").forEach(clearSlotState);
+    verdict.textContent = "";
+    verdict.className = "verdict";
+  }
+
+  function resetMarks(){ clearAllMarks(); }
+
+  function updateTally(){
+    const n = board.querySelectorAll(".slot .card").length;
+    placedEl.textContent = n;
+  }
+
+  /* ------------------------------------------------------------ actions */
+  function check(){
+    const slots = Array.from(board.querySelectorAll(".slot"));
+    let right = 0, filled = 0;
+
+    slots.forEach(slot=>{
+      const el = slot.querySelector(".card");
+      const mark = slot.parentElement.querySelector(".mark");
+      slot.classList.remove("is-correct","is-wrong");
+      if(!el){ mark.textContent=""; mark.className="mark"; return; }
+      filled++;
+      if(el.dataset.cardId === slot.dataset.expects){
+        right++;
+        slot.classList.add("is-correct");
+        mark.textContent = "Correct";
+        mark.className = "mark ok";
+      }else{
+        slot.classList.add("is-wrong");
+        mark.textContent = "Not this one — move it back and try again";
+        mark.className = "mark no";
+      }
+    });
+
+    checked = true;
+    const total = slots.length;
+
+    if(filled === 0){
+      verdict.textContent = "Place some cards first, then check.";
+      verdict.className = "verdict";
+    }else if(right === total){
+      verdict.textContent = "All " + total + " correct. Nothing left to fix in this round.";
+      verdict.className = "verdict win";
+    }else{
+      verdict.textContent = right + " of " + total + " correct. The marked slots are wrong — click those cards to send them back.";
+      verdict.className = "verdict";
+    }
+  }
+
+  function clearBoard(){
+    board.querySelectorAll(".slot .card").forEach(el=> bank.appendChild(el));
+    document.querySelectorAll(".slot").forEach(clearSlotState);
+    clearAllMarks();
+    refreshBankEmpty();
+    updateTally();
+  }
+
+  function reveal(){
+    clearBoard();
+    board.querySelectorAll(".slot").forEach(slot=>{
+      const want = slot.dataset.expects;
+      const el = document.querySelector('.card[data-card-id="'+CSS.escape(want)+'"]');
+      if(el){
+        slot.appendChild(el);
+        slot.classList.add("is-correct");
+        const m = slot.parentElement.querySelector(".mark");
+        m.textContent = "Answer";
+        m.className = "mark ok";
+      }
+    });
+    checked = true;
+    refreshBankEmpty();
+    updateTally();
+    verdict.textContent = "Answers shown. Clear the board and try it again from memory.";
+    verdict.className = "verdict";
+  }
+
+  /* -------------------------------------------------------------- wiring */
+  document.getElementById("btnCheck").addEventListener("click", check);
+  document.getElementById("btnClear").addEventListener("click", clearBoard);
+  document.getElementById("btnReveal").addEventListener("click", reveal);
+  document.getElementById("btnShuffle").addEventListener("click", function(){
+    const loose = Array.from(bank.querySelectorAll(".card")).map(el=>cardById(el.dataset.cardId)).filter(Boolean);
+    fillBank(loose);
+  });
+
+  bank.addEventListener("click", function(){ 
+    if(held){ clearHeldStyles(); held = null; }
+  });
+  bank.addEventListener("dragover", function(ev){ ev.preventDefault(); bank.classList.add("is-target"); });
+  bank.addEventListener("dragleave", function(){ bank.classList.remove("is-target"); });
+  bank.addEventListener("drop", function(ev){
+    ev.preventDefault();
+    bank.classList.remove("is-target");
+    let id = "";
+    try{ id = ev.dataTransfer.getData("text/plain"); }catch(e){}
+    if(!id) id = held;
+    if(!id) return;
+    const el = document.querySelector('.card[data-card-id="'+CSS.escape(id)+'"]');
+    if(el){
+      const slot = el.parentElement;
+      bank.appendChild(el);
+      if(slot && slot.classList.contains("slot")) clearSlotState(slot);
+    }
+    held = null;
+    refreshBankEmpty();
+    updateTally();
+  });
+
+  document.querySelectorAll(".round-tab").forEach(tab=>{
+    tab.addEventListener("click", function(){
+      document.querySelectorAll(".round-tab").forEach(t=>t.setAttribute("aria-selected","false"));
+      tab.setAttribute("aria-selected","true");
+      currentRound = tab.dataset.round;
+      held = null;
+      render();
+      window.scrollTo({top:0, behavior:"smooth"});
+    });
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GenAI Fundamentals Card Match — AIF-C01 Domain 2</title>
+<style>
+:root{
+  --garnet:#4E0A0B;
+  --garnet-soft:#7A2A29;
+  --ink:#1C1512;
+  --parchment:#F2EEE8;
+  --card:#FBF9F6;
+  --khaki:#9DAD71;
+  --khaki-deep:#5F7040;
+  --rose:#E38792;
+  --brass:#A88A4A;
+  --rule:#D9D0C5;
+
+  --display:'Iowan Old Style','Palatino Linotype',Palatino,'Book Antiqua',Georgia,serif;
+  --body:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,monospace;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--parchment);
+  color:var(--ink);
+  font-family:var(--body);
+  font-size:16px;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  padding:0 0 4rem;
+}
+
+.masthead{
+  border-bottom:2px solid var(--garnet);
+  background:var(--parchment);
+  position:sticky; top:0; z-index:50;
+}
+.masthead-inner{
+  max-width:1180px; margin:0 auto;
+  padding:1.1rem 1.5rem .9rem;
+  display:flex; flex-wrap:wrap; align-items:baseline; gap:.6rem 1.4rem;
+}
+.eyebrow{
+  font-family:var(--mono); font-size:.66rem; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--brass); margin:0 0 .15rem;
+}
+.masthead h1{
+  font-family:var(--display); font-size:1.5rem; font-weight:600;
+  color:var(--garnet); margin:0; letter-spacing:-.01em;
+}
+.masthead .title-block{flex:1 1 260px}
+.tally{
+  font-family:var(--mono); font-size:.78rem; letter-spacing:.06em;
+  color:var(--garnet); border:1px solid var(--rule); background:var(--card);
+  padding:.4rem .7rem; white-space:nowrap;
+}
+.tally b{font-weight:700}
+
+.group-label{
+  max-width:1180px; margin:1rem auto 0; padding:0 1.5rem;
+  font-family:var(--mono); font-size:.64rem; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--garnet-soft); opacity:.75;
+}
+.group-label:first-of-type{margin-top:1.1rem}
+
+.rounds{
+  max-width:1180px; margin:0 auto; padding:.4rem 1.5rem 0;
+  display:flex; gap:.45rem; flex-wrap:wrap;
+}
+.round-tab{
+  font-family:var(--body); font-size:.78rem; background:transparent;
+  border:1px solid var(--rule); color:var(--garnet-soft);
+  padding:.4rem .75rem; cursor:pointer; border-radius:2px;
+  transition:background .15s,color .15s,border-color .15s;
+}
+.round-tab:hover{border-color:var(--garnet-soft)}
+.round-tab[aria-selected="true"]{background:var(--garnet);border-color:var(--garnet);color:#fff}
+.round-tab .tab-count{font-family:var(--mono);font-size:.66rem;opacity:.7;margin-left:.35rem}
+.round-tab:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+
+main{max-width:1180px;margin:0 auto;padding:1.4rem 1.5rem 0}
+.round-intro{font-size:.9rem;color:#5A4E47;margin:0 0 1.4rem;max-width:68ch}
+
+.bank-head{
+  display:flex; align-items:baseline; justify-content:space-between;
+  gap:1rem; border-bottom:1px solid var(--rule);
+  padding-bottom:.4rem; margin-bottom:.9rem;
+}
+.bank-head h2{
+  font-family:var(--mono); font-size:.68rem; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--brass); font-weight:500; margin:0;
+}
+.hint{font-size:.76rem;color:#8A7D74}
+
+.bank{
+  display:flex; flex-wrap:wrap; gap:.6rem; min-height:5.5rem;
+  padding:.9rem; background:rgba(255,255,255,.5);
+  border:1px dashed var(--rule); margin-bottom:2.2rem; align-content:flex-start;
+}
+.bank.is-target{border-color:var(--garnet-soft);background:rgba(227,135,146,.08)}
+.bank-empty{font-size:.82rem;color:#9A8E85;font-style:italic;margin:auto}
+
+.card{
+  font-family:var(--body); font-size:.82rem; line-height:1.4; text-align:left;
+  background:var(--card); border:1px solid var(--rule);
+  border-left:3px solid var(--rose); border-radius:2px;
+  padding:.55rem .7rem; max-width:19rem; cursor:grab;
+  box-shadow:0 1px 0 rgba(78,10,11,.06);
+  transition:transform .14s ease,box-shadow .14s ease,border-color .14s ease;
+  color:var(--ink); display:block;
+}
+.card:hover{transform:translateY(-2px);box-shadow:0 4px 10px rgba(78,10,11,.11)}
+.card:focus-visible{outline:2px solid var(--garnet);outline-offset:2px}
+.card.is-held{
+  border-color:var(--garnet); border-left-color:var(--garnet);
+  box-shadow:0 0 0 2px rgba(78,10,11,.22),0 6px 14px rgba(78,10,11,.16);
+  transform:translateY(-2px);
+}
+.card.is-dragging{opacity:.4}
+.card[data-kind="contributes"],.card[data-kind="does"],.card[data-kind="content"]{border-left-color:var(--brass)}
+.card[data-kind="decision"],.card[data-kind="best"],.card[data-kind="tradeoff"],.card[data-kind="aws"]{border-left-color:var(--khaki-deep)}
+.card[data-kind="works"],.card[data-kind="role"],.card[data-kind="layer"]{border-left-color:var(--garnet-soft)}
+
+.board{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:1.1rem}
+.board.wide{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+.board.pair{grid-template-columns:repeat(auto-fit,minmax(340px,1fr))}
+.board.track{grid-template-columns:1fr;gap:.55rem;max-width:640px}
+
+.concept{
+  background:var(--card); border:1px solid var(--rule);
+  border-top:3px solid var(--garnet); border-radius:2px;
+  padding:0 0 .9rem; box-shadow:0 1px 0 rgba(78,10,11,.05);
+}
+.concept-head{padding:.8rem 1rem .55rem;border-bottom:1px solid var(--rule);margin-bottom:.8rem}
+.concept-index{
+  font-family:var(--mono); font-size:.66rem; letter-spacing:.14em;
+  color:var(--brass); display:block; margin-bottom:.2rem;
+}
+.concept-name{
+  font-family:var(--display); font-size:1.04rem; font-weight:600;
+  color:var(--garnet); margin:0; line-height:1.25;
+}
+.concept-sub{font-size:.76rem;color:#8A7D74;margin:.25rem 0 0;line-height:1.35}
+
+.track .concept{display:flex;align-items:center;gap:.9rem;padding:.6rem .9rem}
+.track .concept-head{border:none;padding:0;margin:0;flex:0 0 auto}
+.track .concept-index{
+  font-family:var(--display); font-size:1.3rem; color:var(--garnet);
+  background:rgba(227,135,146,.16); border-radius:50%;
+  width:2.1rem;height:2.1rem;display:flex;align-items:center;justify-content:center;
+  margin:0;
+}
+.track .concept-name{display:none}
+.track .slot-wrap{flex:1 1 auto;padding:0}
+.track .slot-label{display:none}
+.track .slot{min-height:2.9rem}
+.track .mark{padding:0 0 0 .2rem !important;margin-top:0}
+
+.slot-wrap{padding:0 1rem .1rem}
+.slot-label{
+  font-family:var(--mono); font-size:.62rem; letter-spacing:.14em;
+  text-transform:uppercase; color:#9A8E85; display:block; margin:.55rem 0 .3rem;
+}
+.slot{
+  min-height:4rem; border:1px dashed var(--rule); border-radius:2px;
+  padding:.35rem; display:flex;
+  transition:border-color .14s,background .14s;
+  background:rgba(242,238,232,.55);
+}
+.slot.is-target{border-color:var(--garnet-soft);background:rgba(227,135,146,.1)}
+.slot .card{max-width:none;width:100%;cursor:pointer;box-shadow:none}
+.slot .card:hover{transform:none;box-shadow:0 2px 6px rgba(78,10,11,.1)}
+.slot.is-correct{border-style:solid;border-color:var(--khaki);background:rgba(157,173,113,.13)}
+.slot.is-correct .card{border-color:var(--khaki);border-left-color:var(--khaki-deep);background:#fff}
+.slot.is-wrong{border-style:solid;border-color:var(--rose);background:rgba(227,135,146,.14);animation:nudge .3s ease}
+.slot.is-wrong .card{border-color:var(--rose);border-left-color:var(--garnet)}
+
+.dropzone{
+  margin:0 1rem; min-height:3.6rem; padding:.5rem;
+  border:1px dashed var(--rule); border-radius:2px;
+  background:rgba(242,238,232,.55);
+  display:flex; flex-direction:column; gap:.4rem;
+  transition:border-color .14s,background .14s;
+}
+.dropzone.is-target{border-color:var(--garnet-soft);background:rgba(227,135,146,.1)}
+.dropzone .card{max-width:none;width:100%;cursor:pointer;box-shadow:none;font-size:.79rem}
+.dropzone .card:hover{transform:none;box-shadow:0 2px 6px rgba(78,10,11,.1)}
+.dropzone-empty{font-size:.75rem;color:#A99D94;font-style:italic;margin:auto;text-align:center}
+.card.is-correct{border-color:var(--khaki);border-left-color:var(--khaki-deep);background:#fff}
+.card.is-wrong{border-color:var(--rose);border-left-color:var(--garnet);background:rgba(227,135,146,.1)}
+
+.mark{
+  font-family:var(--mono); font-size:.68rem; letter-spacing:.08em;
+  margin-top:.28rem; min-height:1rem; display:block;
+}
+.mark.ok{color:var(--khaki-deep)}
+.mark.no{color:var(--garnet)}
+
+@keyframes nudge{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+
+.controls{
+  max-width:1180px; margin:2.2rem auto 0; padding:1.2rem 1.5rem 0;
+  border-top:1px solid var(--rule); display:flex; flex-wrap:wrap;
+  gap:.6rem; align-items:center;
+}
+button.act{
+  font-family:var(--body); font-size:.84rem; padding:.55rem 1.1rem;
+  border-radius:2px; border:1px solid var(--garnet);
+  background:var(--garnet); color:#fff; cursor:pointer;
+  transition:background .15s,color .15s;
+}
+button.act:hover{background:var(--garnet-soft);border-color:var(--garnet-soft)}
+button.act.ghost{background:transparent;color:var(--garnet)}
+button.act.ghost:hover{background:rgba(78,10,11,.07);color:var(--garnet)}
+button.act:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+
+.verdict{
+  max-width:1180px; margin:1.1rem auto 0; padding:0 1.5rem;
+  font-size:.9rem; min-height:1.5rem; color:var(--garnet);
+}
+.verdict.win{color:var(--khaki-deep);font-weight:600}
+
+.footnote{
+  max-width:1180px; margin:2.4rem auto 0; padding:1.1rem 1.5rem 0;
+  border-top:1px solid var(--rule); font-size:.82rem; color:#6B5F57;
+}
+.footnote strong{color:var(--garnet)}
+
+@media (max-width:640px){
+  .masthead h1{font-size:1.2rem}
+  main,.controls,.rounds,.verdict,.footnote,.group-label{padding-left:1rem;padding-right:1rem}
+  .card{max-width:none;width:100%}
+  .board,.board.wide,.board.pair{grid-template-columns:1fr}
+  .track .concept{flex-wrap:wrap}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms !important;transition-duration:.01ms !important}
+}
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="masthead-inner">
+    <div class="title-block">
+      <p class="eyebrow">AIF-C01 · Domain 2 · Fundamentals of GenAI (24% of the exam)</p>
+      <h1>GenAI Fundamentals Card Match</h1>
+    </div>
+    <div class="tally" id="tally">Placed <b id="placedCount">0</b> / <b id="totalCount">10</b></div>
+  </div>
+</header>
+
+<p class="group-label">Task statement 2.1 — basic concepts of generative AI</p>
+<nav class="rounds" role="tablist" aria-label="Rounds for 2.1">
+  <button class="round-tab" role="tab" aria-selected="true"  data-round="core">Core concepts <span class="tab-count">10</span></button>
+  <button class="round-tab" role="tab" aria-selected="false" data-round="usecases">Sort the use case <span class="tab-count">15</span></button>
+  <button class="round-tab" role="tab" aria-selected="false" data-round="sequence">Sequence the FM lifecycle <span class="tab-count">7</span></button>
+  <button class="round-tab" role="tab" aria-selected="false" data-round="levers">Cost levers <span class="tab-count">16</span></button>
+  <button class="round-tab" role="tab" aria-selected="false" data-round="leverfit">Which lever fits? <span class="tab-count">12</span></button>
+  <button class="round-tab" role="tab" aria-selected="false" data-round="context">The context window <span class="tab-count">12</span></button>
+  <button class="round-tab" role="tab" aria-selected="false" data-round="patterns">Multi-agent patterns <span class="tab-count">10</span></button>
+  <button class="round-tab" role="tab" aria-selected="false" data-round="stack">The agentic stack <span class="tab-count">10</span></button>
+  <button class="round-tab" role="tab" aria-selected="false" data-round="memory">Short-term or long-term? <span class="tab-count">4</span></button>
+</nav>
+
+<p class="group-label">Task statement 2.2 — capabilities and limitations</p>
+<nav class="rounds" role="tablist" aria-label="Rounds for 2.2">
+  <button class="round-tab" role="tab" aria-selected="false" data-round="advlim">Advantage or limitation? <span class="tab-count">12</span></button>
+  <button class="round-tab" role="tab" aria-selected="false" data-round="selection">Selection factors <span class="tab-count">9</span></button>
+  <button class="round-tab" role="tab" aria-selected="false" data-round="bizmetrics">Business value metrics <span class="tab-count">7</span></button>
+</nav>
+
+<p class="group-label">Task statement 2.3 — AWS infrastructure for GenAI</p>
+<nav class="rounds" role="tablist" aria-label="Rounds for 2.3">
+  <button class="round-tab" role="tab" aria-selected="false" data-round="layers">Which layer, which service? <span class="tab-count">16</span></button>
+  <button class="round-tab" role="tab" aria-selected="false" data-round="trigger">Match the trigger phrase <span class="tab-count">8</span></button>
+  <button class="round-tab" role="tab" aria-selected="false" data-round="whyaws">Why build on AWS <span class="tab-count">11</span></button>
+  <button class="round-tab" role="tab" aria-selected="false" data-round="costtradeoffs">Cost tradeoffs <span class="tab-count">7</span></button>
+</nav>
+
+<main>
+  <p class="round-intro" id="roundIntro"></p>
+
+  <div class="bank-head">
+    <h2>Loose cards</h2>
+    <span class="hint">Click a card, then click where it goes. Or drag it. Click a placed card to send it back.</span>
+  </div>
+  <div class="bank" id="bank" aria-label="Unplaced cards"></div>
+
+  <div class="board" id="board"></div>
+</main>
+
+<div class="controls">
+  <button class="act" id="btnCheck">Check answers</button>
+  <button class="act ghost" id="btnShuffle">Shuffle cards</button>
+  <button class="act ghost" id="btnClear">Clear board</button>
+  <button class="act ghost" id="btnReveal">Show me the answers</button>
+</div>
+
+<p class="verdict" id="verdict"></p>
+
+<div class="footnote" id="footnote"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  const ROUNDS = {
+
+    core:{
+      mode:"slots",
+      intro:"Ten terms from objective 2.1.1. These are the vocabulary layer for the rest of the domain — if any of these are shaky, everything built on top of them gets harder.",
+      footnote:"<strong>Transformer vs diffusion:</strong> transformers generate sequences token by token and dominate text. Diffusion models start from noise and denoise toward an image, and dominate image generation.",
+      slotTypes:[{key:"def", label:"Definition"}],
+      concepts:[
+        {id:"token", name:"Token",
+          def:"The unit a model actually processes. Text is split into tokens before anything else happens — whole words, fragments, or punctuation."},
+        {id:"chunking", name:"Chunking",
+          def:"Splitting a long document into smaller passages before embedding them for retrieval."},
+        {id:"embedding", name:"Embedding",
+          def:"A numerical vector representation of content in which semantically similar items land close together in the vector space."},
+        {id:"vector", name:"Vector",
+          def:"The array of numbers itself — what an embedding actually is."},
+        {id:"vectordb", name:"Vector database",
+          def:"A store that indexes embeddings so you can find the nearest neighbours to a query vector quickly."},
+        {id:"transformer", name:"Transformer",
+          def:"The neural architecture behind essentially all modern LLMs, built on self-attention: weighing the relevance of every other token in the context."},
+        {id:"fm", name:"Foundation model (FM)",
+          def:"A large model pre-trained on a broad, unlabelled corpus using self-supervised learning, adaptable to many downstream tasks."},
+        {id:"llm", name:"Large language model (LLM)",
+          def:"A foundation model specialised to text, built on the transformer architecture. Every LLM is an FM; not every FM is an LLM."},
+        {id:"multimodal", name:"Multi-modal model",
+          def:"Accepts or produces more than one modality — text plus image, video or audio."},
+        {id:"diffusion", name:"Diffusion model",
+          def:"Generates images by starting from noise and iteratively removing it, guided by a prompt. The dominant architecture for image generation."}
+      ]
+    },
+
+    usecases:{
+      mode:"buckets",
+      intro:"The five C-and-F verbs from objective 2.1.2: Create, Condense, Converse, Convert, Find. Every generative AI use case in the exam guide falls into one of these five. Sort each example into its family.",
+      footnote:"<strong>Memory hook:</strong> if a scenario does not fit any of the five verbs, the task is probably not a generative AI task at all.",
+      targets:[
+        {id:"create",   name:"Create"},
+        {id:"condense",  name:"Condense"},
+        {id:"converse",  name:"Converse"},
+        {id:"convert",   name:"Convert"},
+        {id:"find",      name:"Find"}
+      ],
+      items:[
+        {id:"c1", target:"create", text:"Marketing copy"},
+        {id:"c2", target:"create", text:"Image generation"},
+        {id:"c3", target:"create", text:"Code generation"},
+
+        {id:"n1", target:"condense", text:"Summarisation"},
+        {id:"n2", target:"condense", text:"Meeting notes"},
+        {id:"n3", target:"condense", text:"Extraction into structure"},
+
+        {id:"v1", target:"converse", text:"AI assistants"},
+        {id:"v2", target:"converse", text:"Customer service agents"},
+        {id:"v3", target:"converse", text:"Voice agents"},
+
+        {id:"t1", target:"convert", text:"Translation"},
+        {id:"t2", target:"convert", text:"Style and tone rewriting"},
+        {id:"t3", target:"convert", text:"Code migration"},
+
+        {id:"f1", target:"find", text:"Semantic search"},
+        {id:"f2", target:"find", text:"Knowledge bases"},
+        {id:"f3", target:"find", text:"Research assistants"}
+      ]
+    },
+
+    sequence:{
+      mode:"slots",
+      track:true,
+      intro:"Seven stages of the foundation model lifecycle, objective 2.1.3. No descriptions here — just put the stages back in order.",
+      footnote:"<strong>Remember for the exam:</strong> as an AI practitioner using Amazon Bedrock, you normally join this lifecycle at step 5 or 6 — the provider did steps 1 to 4. That is why using an FM is cheap while creating one is not.",
+      slotTypes:[{key:"stage", label:"Which stage goes here?"}],
+      concepts:[
+        {id:"p1", name:"Step", stage:"Data selection"},
+        {id:"p2", name:"Step", stage:"Model selection"},
+        {id:"p3", name:"Step", stage:"Pre-training"},
+        {id:"p4", name:"Step", stage:"Fine-tuning"},
+        {id:"p5", name:"Step", stage:"Evaluation"},
+        {id:"p6", name:"Step", stage:"Deployment"},
+        {id:"p7", name:"Step", stage:"Feedback"}
+      ]
+    },
+
+    levers:{
+      mode:"slots",
+      intro:"Eight cost levers from Table 2.1, objective 2.1.4. This is the highest-yield table in the whole domain for cost questions, which recur across Domains 2 and 3.",
+      footnote:"<strong>Common mistake:</strong> provisioned throughput is not a cost-saving measure by default. It buys guaranteed capacity, billed by the hour whether you use it or not. It only saves money at consistently high utilisation.",
+      slotTypes:[
+        {key:"reduces", label:"How it reduces cost"},
+        {key:"when",    label:"When to use it"}
+      ],
+      concepts:[
+        {id:"smaller", name:"Choose a smaller model",
+          reduces:"Smaller models cost dramatically less per token.",
+          when:"Routine, well-bounded tasks: classification, extraction, short replies."},
+        {id:"shorten", name:"Shorten the prompt",
+          reduces:"Fewer input tokens on every call.",
+          when:"Trim redundant instructions and retrieve fewer, better chunks."},
+        {id:"limit", name:"Limit output length",
+          reduces:"Fewer, more expensive output tokens, and lower latency.",
+          when:"Set max tokens deliberately rather than leaving it high."},
+        {id:"caching", name:"Prompt caching",
+          reduces:"Reuses a repeated prefix, charged at a reduced rate instead of full price on every call.",
+          when:"Long system prompts or a fixed document reused across many requests."},
+        {id:"batch", name:"Batch inference",
+          reduces:"Asynchronous bulk processing at a substantial discount to on-demand.",
+          when:"Large offline jobs where latency does not matter."},
+        {id:"provisioned", name:"Provisioned throughput",
+          reduces:"Reserved capacity billed by time rather than per token, with committed guaranteed throughput.",
+          when:"High, steady, predictable volume, or when a custom model requires it."},
+        {id:"distillation", name:"Model distillation",
+          reduces:"Produces a smaller, faster, cheaper model that mimics a larger teacher on your task.",
+          when:"Very high volume on a narrow task where a frontier model is overkill."},
+        {id:"routing", name:"Intelligent prompt routing",
+          reduces:"Routes simpler requests to a cheaper model and harder ones to a stronger model automatically.",
+          when:"Mixed workloads with a wide difficulty spread."}
+      ]
+    },
+
+    leverfit:{
+      mode:"buckets",
+      intro:"Six levers, twelve scenarios drawn from the worked examples in objective 2.1.4. This is closer to how the exam actually asks cost questions — a situation, not a definition.",
+      footnote:"<strong>Andes Retail does the arithmetic:</strong> a 4,200-token system prompt sent with every one of 500,000 monthly requests is 2.1 billion input tokens spent re-sending the same text. Caching the fixed prefix and moving routine classification to a smaller model both cut cost without touching quality on the questions that need it.",
+      targets:[
+        {id:"caching",     name:"Prompt caching"},
+        {id:"batch",       name:"Batch inference"},
+        {id:"provisioned", name:"Provisioned throughput"},
+        {id:"smaller",     name:"Smaller model"},
+        {id:"limit",       name:"Limit output length"},
+        {id:"routing",     name:"Intelligent prompt routing"}
+      ],
+      items:[
+        {id:"s1", target:"caching", text:"A 4,200-token system prompt containing a policy document that never changes is sent with every one of 500,000 monthly requests."},
+        {id:"s2", target:"caching", text:"A long system prompt or fixed document is reused across many requests."},
+
+        {id:"s3", target:"batch", text:"80,000 delivery exception reports need summarising overnight; results are needed by 7 a.m. and nobody is waiting on an individual summary."},
+        {id:"s4", target:"batch", text:"A large offline job where latency does not matter, offered at a discount to on-demand rates."},
+
+        {id:"s5", target:"provisioned", text:"Traffic is steady, high and predictable, and the application requires guaranteed throughput."},
+        {id:"s6", target:"provisioned", text:"A custom model requires committed, reserved capacity."},
+
+        {id:"s7", target:"smaller", text:"3 million short support messages a month need classifying into 8 categories, and a small model already performs well."},
+        {id:"s8", target:"smaller", text:"A routine, well-bounded task: classification, extraction, or short replies."},
+
+        {id:"s9", target:"limit", text:"Responses are slow and expensive because the model keeps generating long answers."},
+        {id:"s10", target:"limit", text:"Setting max tokens deliberately, both as a cost control and a latency control."},
+
+        {id:"s11", target:"routing", text:"A mixed workload has a wide spread of difficulty, from trivial lookups to complex reasoning."},
+        {id:"s12", target:"routing", text:"Simple requests should go to a cheaper model automatically, harder ones to a stronger model."}
+      ]
+    },
+
+    context:{
+      mode:"slots",
+      intro:"Six things competing for space in a model's context window, objective 2.1.5. This is a new objective in v1.1 and the whole point is that the window is finite and every token in it is billed.",
+      footnote:"<strong>Common mistake:</strong> more context is not better context. Lumen Legal cut its retrieval from the top 20 chunks to the top 5 with re-ranking, and both prompt size and answer accuracy improved together.",
+      slotTypes:[
+        {key:"content",  label:"Typical content"},
+        {key:"decision", label:"Engineering decision"}
+      ],
+      concepts:[
+        {id:"system", name:"System instructions",
+          content:"Role, tone, rules, output format, refusal policy.",
+          decision:"Keep stable and cache it; do not rewrite per request."},
+        {id:"retrieved", name:"Retrieved context",
+          content:"Chunks pulled from a knowledge base by similarity.",
+          decision:"How many chunks, how large, re-ranked or not."},
+        {id:"history", name:"Conversation history",
+          content:"Previous turns in a multi-turn session.",
+          decision:"Keep everything, keep the last N turns, or summarise older turns."},
+        {id:"tools", name:"Tool definitions",
+          content:"Schemas describing the functions an agent may call.",
+          decision:"Expose only the tools relevant to the current task."},
+        {id:"fewshot", name:"Few-shot examples",
+          content:"Demonstrations of the desired input-output behaviour.",
+          decision:"Enough to establish the pattern, no more."},
+        {id:"request", name:"The user's actual request",
+          content:"The question being asked right now.",
+          decision:"Should never be crowded out by the above."}
+      ]
+    },
+
+    patterns:{
+      mode:"slots",
+      intro:"Five multi-agent patterns from Table 2.2, objective 2.1.6 — the densest objective in the guide. Learn how each works and what it's for.",
+      footnote:"<strong>Look for the coordinator:</strong> one agent above the others delegating to specialists means supervisor pattern. Peers handing off tasks with no fixed lead means swarm.",
+      slotTypes:[
+        {key:"works", label:"How it works"},
+        {key:"best",  label:"Best for"}
+      ],
+      concepts:[
+        {id:"single", name:"Single agent",
+          works:"One agent with a set of tools handles the whole task.",
+          best:"Well-bounded tasks with a modest tool count."},
+        {id:"supervisor", name:"Supervisor / orchestrator",
+          works:"A lead agent decomposes the goal and delegates sub-tasks to specialist agents, then assembles the result.",
+          best:"Complex tasks spanning several domains of expertise."},
+        {id:"astool", name:"Agent as a tool",
+          works:"A specialist agent is exposed to another agent as if it were a callable tool.",
+          best:"Reusing a capable specialist without hard-wiring a hierarchy."},
+        {id:"swarm", name:"Swarm / peer collaboration",
+          works:"Agents work as peers, handing tasks between themselves without a fixed supervisor.",
+          best:"Exploratory work where the right sequence is not known in advance."},
+        {id:"sequential", name:"Sequential pipeline",
+          works:"Agents run in a fixed order, each consuming the previous output.",
+          best:"Deterministic, auditable workflows."}
+      ]
+    },
+
+    stack:{
+      mode:"slots",
+      intro:"Five layers of the AWS agentic stack, Figure 2.5, objective 2.1.6. Learn which named component sits at which layer, from the application down to the model.",
+      footnote:"<strong>Common confusion:</strong> Strands Agents is the open-source SDK you build an agent with. AgentCore is the managed infrastructure you run it on in production. You build with Strands and run on AgentCore — complementary, not alternatives.",
+      slotTypes:[
+        {key:"component", label:"Named component"},
+        {key:"does",      label:"What it does"}
+      ],
+      concepts:[
+        {id:"appl", name:"Application layer",
+          component:"The business application",
+          does:"Sets the goal and consumes the result."},
+        {id:"orch", name:"Orchestration",
+          component:"Model-driven or workflow-driven",
+          does:"Decides which agent or step runs next, handles retries, enforces limits."},
+        {id:"framework", name:"Agent framework",
+          component:"Strands Agents",
+          does:"Open-source SDK: define a model, a prompt and tools, and the SDK runs the agent loop."},
+        {id:"runtime", name:"Agent runtime and infrastructure",
+          component:"Amazon Bedrock AgentCore",
+          does:"Runtime with session isolation, Memory, Gateway for MCP tools, Identity, Observability, Code Interpreter, Browser."},
+        {id:"model", name:"Foundation model",
+          component:"Amazon Bedrock",
+          does:"The reasoning engine that plans, decides and generates."}
+      ]
+    },
+
+    memory:{
+      mode:"buckets",
+      intro:"Two memory types, four statements. A short, sharp check on a distinction the exam likes to test with a single deciding word: session, or across sessions.",
+      footnote:"<strong>On AWS:</strong> Amazon Bedrock AgentCore Memory provides both managed short-term and long-term memory, so developers do not have to build persistence themselves.",
+      targets:[
+        {id:"short", name:"Short-term (working) memory", sub:"The session"},
+        {id:"long",  name:"Long-term memory", sub:"Across sessions"}
+      ],
+      items:[
+        {id:"m1", target:"short", text:"Held in the context window."},
+        {id:"m2", target:"short", text:"Lasts only for the current session."},
+        {id:"m3", target:"long",  text:"Persisted outside the context window and retrieved when relevant."},
+        {id:"m4", target:"long",  text:"Facts, preferences and past outcomes that survive across separate conversations, weeks apart."}
+      ]
+    },
+
+    advlim:{
+      mode:"buckets",
+      intro:"Five advantages, seven limitations, objectives 2.2.1 and 2.2.2. Sort each name into the list it belongs to — the exam sometimes swaps one from each list as a distractor.",
+      footnote:"<strong>Common mistake:</strong> hallucination is not a bug that can be patched away. On the exam the correct answers are always mitigations — grounding, validation, citation, human review — never \u201ca model that does not hallucinate\u201d.",
+      targets:[
+        {id:"adv", name:"Advantage", sub:"Objective 2.2.1"},
+        {id:"lim", name:"Limitation", sub:"Objective 2.2.2"}
+      ],
+      items:[
+        {id:"a1", target:"adv", text:"Adaptability"},
+        {id:"a2", target:"adv", text:"Responsiveness"},
+        {id:"a3", target:"adv", text:"Conversational capability"},
+        {id:"a4", target:"adv", text:"Ability to generate content"},
+        {id:"a5", target:"adv", text:"Low barrier to entry"},
+
+        {id:"l1", target:"lim", text:"Hallucination"},
+        {id:"l2", target:"lim", text:"Interpretability"},
+        {id:"l3", target:"lim", text:"Inaccuracy"},
+        {id:"l4", target:"lim", text:"Nondeterminism"},
+        {id:"l5", target:"lim", text:"Cost at scale"},
+        {id:"l6", target:"lim", text:"Data currency"},
+        {id:"l7", target:"lim", text:"Bias and toxicity"}
+      ]
+    },
+
+    selection:{
+      mode:"slots",
+      intro:"Nine factors for choosing a generative AI model, objective 2.2.3. The column that actually gets tested is where each factor bites — the concrete failure it causes.",
+      footnote:"<strong>Compliance is a hard filter:</strong> if a model cannot be used in a permitted Region, its quality is irrelevant. Apply compliance and modality first, then compare among the survivors.",
+      slotTypes:[{key:"bites", label:"Where it bites"}],
+      concepts:[
+        {id:"modality", name:"Model type and modality",
+          bites:"Image input rules out text-only models immediately."},
+        {id:"perf", name:"Performance and capability",
+          bites:"Benchmarks help but your own evaluation set is what counts."},
+        {id:"cost", name:"Cost",
+          bites:"A frontier model on a high-volume routine task is the classic overspend."},
+        {id:"latency", name:"Latency",
+          bites:"Larger models are slower; interactive uses may need a smaller one."},
+        {id:"size", name:"Model complexity and size",
+          bites:"Smaller means cheaper and faster, often with no quality loss on narrow tasks."},
+        {id:"constraints", name:"Constraints",
+          bites:"A 200-page document needs a long context window or chunking."},
+        {id:"compliance", name:"Compliance",
+          bites:"May eliminate otherwise ideal models outright."},
+        {id:"custom", name:"Customisation",
+          bites:"Not every model on Bedrock supports every customisation path."},
+        {id:"multilingual", name:"Multilingual",
+          bites:"English benchmark scores do not transfer automatically to Spanish."}
+      ]
+    },
+
+    bizmetrics:{
+      mode:"slots",
+      intro:"Seven business value metrics, objective 2.2.4. These are the exact set named in the exam guide — learn the list, since they show up as answer options.",
+      footnote:"<strong>Model metrics answer \u201cis this working?\u201d Business metrics answer \u201cis this worth doing?\u201d</strong> Do not mix the two families.",
+      slotTypes:[{key:"measures", label:"What it measures"}],
+      concepts:[
+        {id:"crossdomain", name:"Cross-domain performance",
+          measures:"How well one model handles tasks across several business areas — the main argument for a shared FM platform."},
+        {id:"roi", name:"Return on investment (ROI)",
+          measures:"Net benefit against total cost of the initiative."},
+        {id:"efficiency", name:"Efficiency",
+          measures:"Time or effort saved per task, for example handling time in a contact centre."},
+        {id:"conversion", name:"Conversion rate",
+          measures:"Proportion of interactions producing the desired commercial outcome."},
+        {id:"arpu", name:"Average revenue per user",
+          measures:"Revenue effect of the AI feature per customer."},
+        {id:"accuracy", name:"Accuracy",
+          measures:"How often the output is correct, judged against a business standard rather than a label set."},
+        {id:"clv", name:"Customer lifetime value",
+          measures:"Long-run relationship value, used to justify retention and personalisation work."}
+      ]
+    },
+
+    layers:{
+      mode:"slots",
+      intro:"Eight AWS services from Table 2.3, objective 2.3.1. Each sits at a different layer of the GenAI stack — the layer is often the fastest way to eliminate wrong answers.",
+      footnote:"<strong>Common mistake:</strong> naming has moved recently. Amazon QuickSight became Amazon Quick Suite, listed simply as \u201cAmazon Quick\u201d in the exam guide. Kiro is the stated successor to Amazon Q Developer for IDE-based assistance.",
+      slotTypes:[
+        {key:"layer", label:"Layer"},
+        {key:"role",  label:"One-line role"}
+      ],
+      concepts:[
+        {id:"bedrock", name:"Amazon Bedrock",
+          layer:"Model access",
+          role:"Fully managed, serverless API to foundation models from multiple providers, plus Knowledge Bases, Guardrails, Agents, Flows, Prompt Management, Model Evaluation."},
+        {id:"smai", name:"Amazon SageMaker AI",
+          layer:"ML platform",
+          role:"Build, train, tune, deploy and monitor custom models, with full control of instances and infrastructure."},
+        {id:"jumpstart", name:"Amazon SageMaker JumpStart",
+          layer:"Model hub",
+          role:"Pre-trained and open-source models plus solution templates, deployable to your own SageMaker endpoints."},
+        {id:"agentcore", name:"Amazon Bedrock AgentCore",
+          layer:"Agent infrastructure",
+          role:"Production runtime for agents: session isolation, Memory, Gateway, Identity, Observability, Code Interpreter and Browser."},
+        {id:"strands", name:"Strands Agents",
+          layer:"Agent SDK",
+          role:"Open-source, model-driven SDK for building agents from a model, a prompt and a set of tools."},
+        {id:"kiro", name:"Kiro",
+          layer:"Developer tooling",
+          role:"Spec-driven agentic IDE: generates requirements, design and task documents before writing code."},
+        {id:"amazonq", name:"Amazon Q",
+          layer:"Assistant",
+          role:"AI assistant across AWS surfaces, including the console and documentation."},
+        {id:"quick", name:"Amazon Quick",
+          layer:"Business intelligence and agentic workspace",
+          role:"Evolution of Amazon QuickSight: dashboards and BI plus agentic research, chat and workflow automation."}
+      ]
+    },
+
+    trigger:{
+      mode:"buckets",
+      intro:"The same eight services, this time matched to the phrase in a scenario that points to each one. This is the closest this domain gets to how the real exam presents a service-selection question.",
+      footnote:"<strong>Straight from Table 2.3:</strong> \u201cchoose it when the stem says\u2026\u201d — the exam guide frames service selection exactly this way.",
+      targets:[
+        {id:"bedrock",   name:"Amazon Bedrock"},
+        {id:"smai",      name:"Amazon SageMaker AI"},
+        {id:"jumpstart", name:"Amazon SageMaker JumpStart"},
+        {id:"agentcore", name:"Amazon Bedrock AgentCore"},
+        {id:"strands",   name:"Strands Agents"},
+        {id:"kiro",      name:"Kiro"},
+        {id:"amazonq",   name:"Amazon Q"},
+        {id:"quick",     name:"Amazon Quick"}
+      ],
+      items:[
+        {id:"t1", target:"bedrock",   text:"\u201cwe want to use a foundation model without managing infrastructure\u201d"},
+        {id:"t2", target:"smai",      text:"\u201cwe need to train our own model\u201d or \u201cwe need full control of the endpoint\u201d"},
+        {id:"t3", target:"jumpstart", text:"\u201cwe want an open-source model deployed into our own environment\u201d"},
+        {id:"t4", target:"agentcore", text:"\u201cwe have a working agent prototype and need to run it securely in production\u201d"},
+        {id:"t5", target:"strands",   text:"\u201cwe want to build an agent in code with minimal boilerplate\u201d"},
+        {id:"t6", target:"kiro",      text:"\u201cdevelopers need an AI-assisted IDE that plans before it codes\u201d"},
+        {id:"t7", target:"amazonq",   text:"\u201chelp our staff query AWS or our business systems conversationally\u201d"},
+        {id:"t8", target:"quick",     text:"\u201cbusiness users need dashboards, natural-language analysis or automated research\u201d"}
+      ]
+    },
+
+    whyaws:{
+      mode:"slots",
+      intro:"Eleven reasons to build on AWS, combining the advantages of AWS GenAI services (2.3.2) and the infrastructure benefits (2.3.3). Different tables, same underlying question: what do you get for building here instead of elsewhere?",
+      footnote:"<strong>Remember for the exam:</strong> your prompts and completions are not used to train the underlying foundation models on Amazon Bedrock, and are not shared with model providers. This single fact is one of the most frequently examined in Domain 2 and Domain 5.",
+      slotTypes:[{key:"gives", label:"What it gives you"}],
+      concepts:[
+        {id:"accessibility", name:"Accessibility",
+          gives:"Multiple leading model providers behind one API and one set of credentials."},
+        {id:"barrier", name:"Lower barrier to entry",
+          gives:"No GPU clusters to procure, no model to train, no ML PhD required."},
+        {id:"efficiency2", name:"Efficiency",
+          gives:"Managed Knowledge Bases, Guardrails, Agents and evaluation replace components you would otherwise build."},
+        {id:"costeff", name:"Cost-effectiveness",
+          gives:"Pay per token with no idle infrastructure, plus batch, caching and distillation as cost levers."},
+        {id:"speed", name:"Speed to market",
+          gives:"A working prototype in hours instead of a training project in months."},
+        {id:"meeting", name:"Meeting business objectives",
+          gives:"The same platform scales from experiment to production without re-platforming."},
+        {id:"security2", name:"Security",
+          gives:"IAM for fine-grained access, AWS KMS for encryption with customer managed keys, AWS PrivateLink to keep traffic off the public internet."},
+        {id:"compliance2", name:"Compliance",
+          gives:"AWS Artifact for compliance reports, AWS Audit Manager for evidence collection, AWS Config for configuration compliance, CloudTrail for an auditable API record."},
+        {id:"responsibility", name:"Responsibility",
+          gives:"The AWS shared responsibility model sets a clear line between what AWS secures and what you secure."},
+        {id:"safety2", name:"Safety",
+          gives:"Amazon Bedrock Guardrails apply content filters, denied topics, word filters, PII redaction and contextual grounding checks consistently across models."},
+        {id:"privacy", name:"Data privacy",
+          gives:"Your prompts and completions are not used to train the underlying foundation models, and are not shared with model providers."}
+      ]
+    },
+
+    costtradeoffs:{
+      mode:"slots",
+      intro:"Seven cost tradeoffs from objective 2.3.4. Each is a genuine tension, not a free win — the guidance column is what the exam actually tests.",
+      footnote:"<strong>Ties back to 2.1.4:</strong> token-based pricing, provisioned throughput and custom-model cost all reappear here from the earlier cost-levers rounds. Same facts, framed as tradeoffs rather than levers.",
+      slotTypes:[{key:"guidance", label:"Guidance"}],
+      concepts:[
+        {id:"respcost", name:"Responsiveness vs cost",
+          guidance:"Match the model to the interaction. Interactive chat needs speed; nightly batch does not."},
+        {id:"availability", name:"Availability and redundancy",
+          guidance:"Justify multi-Region deployment against an actual availability requirement."},
+        {id:"perfcost", name:"Performance vs cost",
+          guidance:"Use the smallest model that clears your evaluation bar; consider intelligent prompt routing for mixed workloads."},
+        {id:"regional", name:"Regional coverage",
+          guidance:"Check model availability early; it can eliminate a model outright."},
+        {id:"tokenpricing", name:"Token-based pricing",
+          guidance:"Trim prompts, cap output, cache repeated prefixes."},
+        {id:"provisioned2", name:"Provisioned throughput",
+          guidance:"Reserved capacity billed by time; predictable and guaranteed, but wasted when idle. Only at consistently high utilisation."},
+        {id:"custommodels", name:"Custom models",
+          guidance:"Fine-tuning adds training cost plus ongoing storage and, often, provisioned hosting. Confirm that prompting and RAG genuinely cannot meet the requirement first."}
+      ]
+    }
+  };
+
+  const bank       = document.getElementById("bank");
+  const board      = document.getElementById("board");
+  const verdict    = document.getElementById("verdict");
+  const roundIntro = document.getElementById("roundIntro");
+  const footnote   = document.getElementById("footnote");
+  const placedEl   = document.getElementById("placedCount");
+  const totalEl    = document.getElementById("totalCount");
+
+  let currentRound = "core";
+  let held = null;
+  let checked = false;
+
+  function shuffle(arr){
+    const a = arr.slice();
+    for(let i=a.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [a[i],a[j]] = [a[j],a[i]];
+    }
+    return a;
+  }
+  function R(){ return ROUNDS[currentRound]; }
+  function isBuckets(){ return R().mode === "buckets"; }
+
+  function allCards(){
+    const r = R();
+    if(r.mode === "buckets"){
+      return r.items.map(it=>({ id:it.id, kind:"scenario", text:it.text }));
+    }
+    const out = [];
+    r.concepts.forEach(c=>{
+      r.slotTypes.forEach(t=>{
+        out.push({ id:c.id+"|"+t.key, kind:t.key, text:c[t.key] });
+      });
+    });
+    return out;
+  }
+  function cardById(id){ return allCards().find(c=>c.id===id) || null; }
+
+  function expectedTargetsFor(cardId){
+    const r = R();
+    if(r.mode !== "buckets") return [];
+    const it = r.items.find(i=>i.id===cardId);
+    if(!it) return [];
+    if(it.targets) return it.targets;
+    return [it.target];
+  }
+  function primaryTargetFor(cardId){
+    const r = R();
+    if(r.mode !== "buckets") return null;
+    const it = r.items.find(i=>i.id===cardId);
+    if(!it) return null;
+    return it.primary || it.target || (it.targets && it.targets[0]) || null;
+  }
+
+  function makeCardEl(card){
+    const el = document.createElement("button");
+    el.type = "button";
+    el.className = "card";
+    el.dataset.cardId = card.id;
+    el.dataset.kind = card.kind;
+    el.draggable = true;
+    el.textContent = card.text;
+
+    el.addEventListener("click", function(ev){
+      ev.stopPropagation();
+      const p = el.parentElement;
+      if(p && (p.classList.contains("slot") || p.classList.contains("dropzone"))){
+        returnToBank(el);
+      }else{
+        toggleHold(card.id, el);
+      }
+    });
+    el.addEventListener("dragstart", function(ev){
+      held = card.id;
+      el.classList.add("is-dragging");
+      try{ ev.dataTransfer.setData("text/plain", card.id); }catch(e){}
+      ev.dataTransfer.effectAllowed = "move";
+    });
+    el.addEventListener("dragend", function(){
+      el.classList.remove("is-dragging");
+      clearHeldStyles();
+      held = null;
+    });
+    return el;
+  }
+
+  function clearHeldStyles(){
+    document.querySelectorAll(".card.is-held").forEach(c=>c.classList.remove("is-held"));
+  }
+  function toggleHold(id, el){
+    if(held === id){ held=null; clearHeldStyles(); return; }
+    held = id; clearHeldStyles(); el.classList.add("is-held");
+  }
+
+  function render(){
+    const r = R();
+    roundIntro.textContent = r.intro;
+    footnote.innerHTML = r.footnote;
+
+    let cls = "board";
+    if(r.mode === "buckets"){ cls += r.targets.length <= 2 ? " pair" : " wide"; }
+    if(r.track){ cls += " track"; }
+    board.className = cls;
+
+    totalEl.textContent = allCards().length;
+
+    board.innerHTML = "";
+    if(r.mode === "buckets") renderBuckets(r); else renderSlots(r);
+
+    fillBank(allCards());
+    clearAllMarks();
+    updateTally();
+  }
+
+  function renderSlots(r){
+    r.concepts.forEach((c,i)=>{
+      const wrap = document.createElement("section");
+      wrap.className = "concept";
+      wrap.appendChild(conceptHead(i, c.name, null));
+
+      r.slotTypes.forEach(t=>{
+        const sw = document.createElement("div");
+        sw.className = "slot-wrap";
+
+        const lab = document.createElement("span");
+        lab.className = "slot-label";
+        lab.textContent = t.label;
+
+        const slot = document.createElement("div");
+        slot.className = "slot";
+        slot.dataset.expects = c.id+"|"+t.key;
+        slot.tabIndex = 0;
+        slot.setAttribute("role","group");
+        slot.setAttribute("aria-label", c.name+" — "+t.label);
+
+        slot.addEventListener("click", function(){ placeIntoSlot(slot); });
+        slot.addEventListener("keydown", function(ev){
+          if(ev.key==="Enter"||ev.key===" "){ ev.preventDefault(); placeIntoSlot(slot); }
+        });
+        wireDrop(slot, function(){ placeIntoSlot(slot); });
+
+        const mark = document.createElement("span");
+        mark.className = "mark";
+
+        sw.appendChild(lab); sw.appendChild(slot); sw.appendChild(mark);
+        wrap.appendChild(sw);
+      });
+      board.appendChild(wrap);
+    });
+  }
+
+  function renderBuckets(r){
+    r.targets.forEach((t,i)=>{
+      const wrap = document.createElement("section");
+      wrap.className = "concept";
+      wrap.appendChild(conceptHead(i, t.name, t.sub));
+
+      const zone = document.createElement("div");
+      zone.className = "dropzone";
+      zone.dataset.bucket = t.id;
+      zone.tabIndex = 0;
+      zone.setAttribute("role","group");
+      zone.setAttribute("aria-label", t.name);
+
+      zone.addEventListener("click", function(){ placeIntoBucket(zone); });
+      zone.addEventListener("keydown", function(ev){
+        if(ev.key==="Enter"||ev.key===" "){ ev.preventDefault(); placeIntoBucket(zone); }
+      });
+      wireDrop(zone, function(){ placeIntoBucket(zone); });
+
+      wrap.appendChild(zone);
+
+      const mark = document.createElement("span");
+      mark.className = "mark";
+      mark.style.padding = "0 1rem";
+      wrap.appendChild(mark);
+
+      board.appendChild(wrap);
+      refreshZoneEmpty(zone);
+    });
+  }
+
+  function conceptHead(i, name, sub){
+    const head = document.createElement("div");
+    head.className = "concept-head";
+    const idx = document.createElement("span");
+    idx.className = "concept-index";
+    idx.textContent = String(i+1).padStart(2,"0");
+    const nm = document.createElement("h3");
+    nm.className = "concept-name";
+    nm.textContent = name;
+    head.appendChild(idx); head.appendChild(nm);
+    if(sub){
+      const s = document.createElement("p");
+      s.className = "concept-sub";
+      s.textContent = sub;
+      head.appendChild(s);
+    }
+    return head;
+  }
+
+  function wireDrop(node, onDrop){
+    node.addEventListener("dragover", function(ev){ ev.preventDefault(); node.classList.add("is-target"); });
+    node.addEventListener("dragleave", function(){ node.classList.remove("is-target"); });
+    node.addEventListener("drop", function(ev){
+      ev.preventDefault();
+      node.classList.remove("is-target");
+      let id="";
+      try{ id = ev.dataTransfer.getData("text/plain"); }catch(e){}
+      if(!id) id = held;
+      if(id){ held = id; onDrop(); }
+    });
+  }
+
+  function fillBank(cards){
+    bank.innerHTML = "";
+    shuffle(cards).forEach(c=> bank.appendChild(makeCardEl(c)) );
+    refreshBankEmpty();
+  }
+  function refreshBankEmpty(){
+    const has = bank.querySelector(".card");
+    const msg = bank.querySelector(".bank-empty");
+    if(!has && !msg){
+      const p = document.createElement("p");
+      p.className = "bank-empty";
+      p.textContent = "All cards placed. Check your answers below.";
+      bank.appendChild(p);
+    }
+    if(has && msg) msg.remove();
+  }
+  function refreshZoneEmpty(zone){
+    const has = zone.querySelector(".card");
+    const msg = zone.querySelector(".dropzone-empty");
+    if(!has && !msg){
+      const p = document.createElement("p");
+      p.className = "dropzone-empty";
+      p.textContent = "Drop cards here";
+      zone.appendChild(p);
+    }
+    if(has && msg) msg.remove();
+  }
+  function refreshAllZones(){ board.querySelectorAll(".dropzone").forEach(refreshZoneEmpty); }
+
+  function heldEl(){
+    if(!held) return null;
+    return document.querySelector('.card[data-card-id="'+CSS.escape(held)+'"]');
+  }
+
+  function placeIntoSlot(slot){
+    const el = heldEl();
+    if(!el) return;
+    const existing = slot.querySelector(".card");
+    if(existing && existing !== el) bank.appendChild(existing);
+    slot.appendChild(el);
+    el.classList.remove("is-held");
+    held = null;
+    clearSlotState(slot);
+    refreshBankEmpty(); updateTally();
+    if(checked) clearAllMarks();
+  }
+
+  function placeIntoBucket(zone){
+    const el = heldEl();
+    if(!el) return;
+    const prev = el.parentElement;
+    zone.appendChild(el);
+    el.classList.remove("is-held","is-correct","is-wrong");
+    held = null;
+    if(prev && prev.classList.contains("dropzone")) refreshZoneEmpty(prev);
+    refreshZoneEmpty(zone);
+    refreshBankEmpty(); updateTally();
+    if(checked) clearAllMarks();
+  }
+
+  function returnToBank(el){
+    const parent = el.parentElement;
+    bank.appendChild(el);
+    el.classList.remove("is-correct","is-wrong");
+    if(parent){
+      if(parent.classList.contains("slot")) clearSlotState(parent);
+      if(parent.classList.contains("dropzone")) refreshZoneEmpty(parent);
+    }
+    held = null; clearHeldStyles();
+    refreshBankEmpty(); updateTally();
+    if(checked) clearAllMarks();
+  }
+
+  function clearSlotState(slot){
+    slot.classList.remove("is-correct","is-wrong");
+    const m = slot.parentElement.querySelector(".mark");
+    if(m){ m.textContent=""; m.className="mark"; }
+  }
+
+  function clearAllMarks(){
+    checked = false;
+    board.querySelectorAll(".slot").forEach(clearSlotState);
+    board.querySelectorAll(".mark").forEach(m=>{ m.textContent=""; m.className="mark"; if(m.parentElement.classList.contains("concept")) m.style.padding="0 1rem"; });
+    board.querySelectorAll(".card").forEach(c=>c.classList.remove("is-correct","is-wrong"));
+    verdict.textContent = ""; verdict.className = "verdict";
+  }
+
+  function updateTally(){
+    const n = board.querySelectorAll(".slot .card, .dropzone .card").length;
+    placedEl.textContent = n;
+  }
+
+  function check(){
+    return isBuckets() ? checkBuckets() : checkSlots();
+  }
+
+  function checkSlots(){
+    const slots = Array.from(board.querySelectorAll(".slot"));
+    let right = 0, filled = 0;
+    slots.forEach(slot=>{
+      const el = slot.querySelector(".card");
+      const mark = slot.parentElement.querySelector(".mark");
+      slot.classList.remove("is-correct","is-wrong");
+      if(!el){ mark.textContent=""; mark.className="mark"; return; }
+      filled++;
+      if(el.dataset.cardId === slot.dataset.expects){
+        right++; slot.classList.add("is-correct");
+        mark.textContent="Correct"; mark.className="mark ok";
+      }else{
+        slot.classList.add("is-wrong");
+        mark.textContent="Not this one — click it to send it back";
+        mark.className="mark no";
+      }
+    });
+    finishCheck(right, slots.length, filled);
+  }
+
+  function checkBuckets(){
+    const zones = Array.from(board.querySelectorAll(".dropzone"));
+    let right = 0, filled = 0;
+    const total = allCards().length;
+
+    zones.forEach(zone=>{
+      const cards = Array.from(zone.querySelectorAll(".card"));
+      let zoneRight = 0;
+      cards.forEach(el=>{
+        filled++;
+        const valid = expectedTargetsFor(el.dataset.cardId);
+        el.classList.remove("is-correct","is-wrong");
+        if(valid.indexOf(zone.dataset.bucket) !== -1){ right++; zoneRight++; el.classList.add("is-correct"); }
+        else{ el.classList.add("is-wrong"); }
+      });
+      const mark = zone.parentElement.querySelector(".mark");
+      if(!cards.length){ mark.textContent=""; mark.className="mark"; }
+      else if(zoneRight === cards.length){
+        mark.textContent = "All " + cards.length + " correct";
+        mark.className = "mark ok";
+      }else{
+        mark.textContent = zoneRight + " of " + cards.length + " correct";
+        mark.className = "mark no";
+      }
+      mark.style.padding = "0 1rem";
+    });
+    finishCheck(right, total, filled);
+  }
+
+  function finishCheck(right, total, filled){
+    checked = true;
+    if(filled === 0){
+      verdict.textContent = "Place some cards first, then check.";
+      verdict.className = "verdict";
+    }else if(right === total){
+      verdict.textContent = "All " + total + " correct. Nothing left to fix in this round.";
+      verdict.className = "verdict win";
+    }else{
+      verdict.textContent = right + " of " + total + " correct. The marked cards are in the wrong place — click one to send it back.";
+      verdict.className = "verdict";
+    }
+  }
+
+  function clearBoard(){
+    board.querySelectorAll(".slot .card, .dropzone .card").forEach(el=>{
+      el.classList.remove("is-correct","is-wrong");
+      bank.appendChild(el);
+    });
+    board.querySelectorAll(".slot").forEach(clearSlotState);
+    refreshAllZones();
+    clearAllMarks();
+    refreshBankEmpty(); updateTally();
+  }
+
+  function reveal(){
+    clearBoard();
+    if(isBuckets()){
+      board.querySelectorAll(".dropzone").forEach(zone=>{
+        R().items.filter(it=> primaryTargetFor(it.id) === zone.dataset.bucket).forEach(it=>{
+          const el = document.querySelector('.card[data-card-id="'+CSS.escape(it.id)+'"]');
+          if(el){ zone.appendChild(el); el.classList.add("is-correct"); }
+        });
+        const mark = zone.parentElement.querySelector(".mark");
+        mark.textContent = "Answer"; mark.className = "mark ok"; mark.style.padding="0 1rem";
+      });
+      refreshAllZones();
+    }else{
+      board.querySelectorAll(".slot").forEach(slot=>{
+        const el = document.querySelector('.card[data-card-id="'+CSS.escape(slot.dataset.expects)+'"]');
+        if(el){
+          slot.appendChild(el);
+          slot.classList.add("is-correct");
+          const m = slot.parentElement.querySelector(".mark");
+          m.textContent = "Answer"; m.className = "mark ok";
+        }
+      });
+    }
+    checked = true;
+    refreshBankEmpty(); updateTally();
+    verdict.textContent = "Answers shown. Clear the board and try it again from memory.";
+    verdict.className = "verdict";
+  }
+
+  document.getElementById("btnCheck").addEventListener("click", check);
+  document.getElementById("btnClear").addEventListener("click", clearBoard);
+  document.getElementById("btnReveal").addEventListener("click", reveal);
+  document.getElementById("btnShuffle").addEventListener("click", function(){
+    const loose = Array.from(bank.querySelectorAll(".card"))
+      .map(el=>cardById(el.dataset.cardId)).filter(Boolean);
+    fillBank(loose);
+  });
+
+  bank.addEventListener("click", function(){ if(held){ clearHeldStyles(); held=null; } });
+  wireDrop(bank, function(){
+    const el = heldEl();
+    if(!el) return;
+    const parent = el.parentElement;
+    bank.appendChild(el);
+    el.classList.remove("is-correct","is-wrong");
+    if(parent){
+      if(parent.classList.contains("slot")) clearSlotState(parent);
+      if(parent.classList.contains("dropzone")) refreshZoneEmpty(parent);
+    }
+    held = null;
+    refreshBankEmpty(); updateTally();
+  });
+
+  document.querySelectorAll(".round-tab").forEach(tab=>{
+    tab.addEventListener("click", function(){
+      document.querySelectorAll(".round-tab").forEach(t=>t.setAttribute("aria-selected","false"));
+      tab.setAttribute("aria-selected","true");
+      currentRound = tab.dataset.round;
+      held = null;
+      render();
+      window.scrollTo({top:0,behavior:"smooth"});
+    });
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
