@@ -409,12 +409,39 @@
       steps:["Prompt engineering","RAG","Model distillation","Fine-tuning","Continued pre-training","Pre-training from scratch"]
     }),
     matchRound({
+      id:"d3-315-customization-use-when",
+      objective:"3.1.5",
+      title:"Customization Approach: Use When",
+      cardType:"Use case",
+      difficulty:"Foundational",
+      tags:["Customization","Cost","Use when"],
+      instructions:"Match each requirement to the customization cost tradeoff approach the guide says to use when that requirement is the deciding factor.",
+      slotLabel:"Use when",
+      slots:[
+        ["prompt","Prompt engineering"],
+        ["rag","RAG"],
+        ["distill","Model distillation"],
+        ["fine-tune","Fine-tuning"],
+        ["continued","Continued pre-training"],
+        ["scratch","Pre-training from scratch"]
+      ],
+      items:[
+        {text:"Fast behavior and formatting improvements.", answer:"prompt"},
+        {text:"Fresh, private, or source-cited knowledge.", answer:"rag"},
+        {text:"High-volume narrow tasks needing lower latency or cost.", answer:"distill"},
+        {text:"Persistent style, format, or task behavior.", answer:"fine-tune"},
+        {text:"Deep domain language adaptation.", answer:"continued"},
+        {text:"Rare cases with massive data, compute, and model ownership needs.", answer:"scratch"}
+      ]
+    }),
+    matchRound({
       id:"d3-316-agent-assistant-workflow",
       objective:"3.1.6",
       title:"Agent, Assistant, or Fixed Workflow?",
       cardType:"Comparison",
       difficulty:"Foundational",
       tags:["Agents","Bedrock Agents"],
+      capacity:"many",
       slots:[["agent","Agent"],["assistant","Assistant"],["workflow","Fixed workflow"]],
       items:[
         {text:"Plans dynamically across several steps and chooses tools", answer:"agent"},
