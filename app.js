@@ -818,7 +818,7 @@
         sourceNote:round.sourceNote,
         destinations:round.destinations,
         slotTypes:round.slotTypes || [{key:"answer", label:round.slotLabel || "Answer"}],
-        capacity:round.activity === "sort" ? "many" : "one",
+        capacity:round.capacity || (round.activity === "sort" ? "many" : "one"),
         cards:round.cards.map(card => Object.assign({}, card, {answers:Array.isArray(card.answers) ? card.answers : [card.answer]}))
       };
     }

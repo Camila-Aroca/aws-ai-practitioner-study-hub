@@ -87,6 +87,7 @@
       title:config.title,
       instructions:config.instructions || "Match each loose card to the visible source label.",
       slotLabel:config.slotLabel || "Source label",
+      capacity:config.capacity,
       destinations:destinations(config.slots),
       cards:config.items
     });
@@ -129,6 +130,44 @@
       destinations:config.steps.map(function(step, idx){ return {id:"step-" + (idx + 1), label:slotPrefix + " " + (idx + 1), sub:"Place the correct source step here."}; }),
       cards:config.steps.map(function(step, idx){ return {text:step, answer:"step-" + (idx + 1), explanation:step + " belongs in position " + (idx + 1) + " of the guide sequence."}; })
     });
+  }
+
+  function stageRound(config){
+    const h = meta(config.id, config.objective, config.title, config.cardType || "Ordering", config.difficulty, config.tags || []);
+    const round = {
+      id:config.id,
+      title:config.title,
+      activity:"match",
+      instructions:config.instructions || "Restore the guide diagram by placing each stage name and explanation in order.",
+      checkLabel:"Check source structure",
+      sourceNote:h.sourceSection + ". Converted from the guide's RAG pipeline diagram.",
+      objective:config.objective,
+      objectiveCodes:[config.objective],
+      hierarchy:h,
+      slotTypes:[
+        {key:"stageName", label:"Stage name"},
+        {key:"whatConsists", label:"What it consists of"}
+      ],
+      destinations:config.stages.map(function(stage, idx){
+        return {id:stage.id, label:(config.slotPrefix || "Stage") + " " + (idx + 1), sub:"Place the source stage name and explanation here."};
+      }),
+      concepts:config.stages.map(function(stage, idx){
+        const concept = {
+          id:stage.id,
+          name:(config.slotPrefix || "Stage") + " " + (idx + 1),
+          stageName:stage.stageName,
+          whatConsists:stage.whatConsists,
+          explanation:stage.stageName + " belongs in position " + (idx + 1) + " of the guide diagram."
+        };
+        concept.hierarchy = Object.assign({}, h, {cardId:stage.id});
+        return concept;
+      }),
+      completionCallout:{
+        title:"RAG pipeline restored",
+        text:"Review the completed guide diagram: ingestion happens when documents are prepared, then each request moves through query, retrieval, augmentation, and generation."
+      }
+    };
+    return round;
   }
 
   function tfRound(config){
@@ -203,11 +242,42 @@
       tags:["Inference parameters"],
       columns:[{id:"controls", label:"What it controls"}, {id:"raise", label:"Raise it to"}, {id:"lower", label:"Lower it to"}],
       rows:[
-        {id:"temperature", label:"Temperature", values:{controls:"Randomness in token selection.", raise:"Increase creativity and variety.", lower:"Make outputs more deterministic."}},
-        {id:"top-p", label:"Top-p", values:{controls:"The cumulative probability mass considered for next tokens.", raise:"Allow broader token choices.", lower:"Narrow the candidate token pool."}},
-        {id:"top-k", label:"Top-k", values:{controls:"The number of highest-probability tokens considered.", raise:"Permit more possible next tokens.", lower:"Restrict generation to fewer candidates."}},
-        {id:"max-output", label:"Maximum output length", values:{controls:"The response length limit.", raise:"Allow longer answers.", lower:"Force shorter answers and cap cost."}},
-        {id:"stop", label:"Stop sequences", values:{controls:"Text patterns that end generation.", raise:"Not a creativity control.", lower:"Not a determinism control; use it to stop at a boundary."}}
+        {id:"temperature", label:"Temperature", values:{controls:"Randomness of token selection.", raise:"Increase creativity and variety.", lower:"Increase determinism, consistency and repeatability."}},
+        {id:"top-p", label:"Top-p", values:{controls:"The cumulative probability threshold used to determine the candidate token set.", raise:"Allow a broader probability mass and usually more diverse token choices.", lower:"Restrict sampling to a narrower probability mass of the most likely tokens."}},
+        {id:"top-k", label:"Top-k", values:{controls:"The fixed number of highest-probability tokens considered.", raise:"Consider a larger fixed number of candidate tokens.", lower:"Consider a smaller fixed number of candidate tokens."}},
+        {id:"max-output", label:"Maximum output length", values:{controls:"Hard cap on the number of tokens generated.", raise:"Permit longer answers.", lower:"Force shorter answers and reduce token cost and latency."}},
+        {id:"stop", label:"Stop sequences", values:{controls:"Strings or patterns that halt generation when produced.", raise:"Not applicable — stop sequences are configured rather than increased.", lower:"Use them to end generation cleanly at a defined structural boundary."}}
+      ]
+    }),
+    matchRound({
+      id:"d3-312-inference-parameters-in-practice",
+      objective:"3.1.2",
+      title:"Inference Parameters in Practice",
+      cardType:"Scenario",
+      difficulty:"Intermediate",
+      tags:["Inference parameters","Scenario practice"],
+      instructions:"Match concrete generation requirements to the inference parameter or adjustment that best solves them.",
+      slotLabel:"Best adjustment",
+      slots:[
+        ["lower-temperature","Lower temperature"],
+        ["raise-temperature","Raise temperature"],
+        ["top-p","Top-p"],
+        ["top-k","Top-k"],
+        ["lower-max-output","Lower maximum output length"],
+        ["raise-max-output","Raise maximum output length"],
+        ["stop-sequence","Stop sequence"]
+      ],
+      items:[
+        {text:"A bank extracts the same fields from loan applications into a fixed JSON structure and wants the result to be highly repeatable between runs.", answer:"lower-temperature"},
+        {text:"A marketing team asks the same model for several alternative campaign headlines and wants the outputs to differ noticeably from one another.", answer:"raise-temperature"},
+        {text:"The candidate set should contain however many of the most likely next tokens are needed to cover approximately 90% of the model's probability distribution.", answer:"top-p"},
+        {text:"For one prediction, only a few tokens account for nearly all of the probability. For another, probability is spread across many tokens. The application should allow the candidate-set size to adapt automatically to this difference.", answer:"top-p"},
+        {text:"At every generation step, the application should consider a fixed pool of the 20 most probable next-token candidates.", answer:"top-k"},
+        {text:"The development team wants the candidate pool to remain the same size regardless of whether probability is concentrated among a few tokens or spread across many.", answer:"top-k"},
+        {text:"A support assistant produces unnecessarily long responses, increasing both response time and token charges.", answer:"lower-max-output"},
+        {text:"A report-generation task repeatedly stops before the model can finish all of the required sections.", answer:"raise-max-output"},
+        {text:"A generated structured response should terminate when a predefined closing delimiter appears instead of continuing with additional commentary.", answer:"stop-sequence"},
+        {text:"Generation should end as soon as the model produces the marker \"### END\".", answer:"stop-sequence"}
       ]
     }),
     tfRound({
@@ -233,14 +303,22 @@
       tags:["RAG","Knowledge Bases"],
       steps:["Collect source documents","Chunk documents","Create embeddings","Store vectors in a vector database"]
     }),
-    sequenceRound({
+    stageRound({
       id:"d3-313-rag-query-order",
       objective:"3.1.3",
       title:"RAG Query Order",
       cardType:"Ordering",
       difficulty:"Foundational",
       tags:["RAG","Knowledge Bases"],
-      steps:["Embed the user question","Search for similar vectors","Retrieve and rerank relevant passages","Add passages to the prompt","Generate an answer with source context and citations"]
+      instructions:"Restore the RAG pipeline diagram from the guide. Each placement card needs the stage name and the source explanation for what that stage consists of.",
+      slotPrefix:"RAG stage",
+      stages:[
+        {id:"rag-stage-1", stageName:"Ingestion", whatConsists:"Documents are collected, chunked into passages, converted to embeddings by an embedding model, and stored with their vectors in a vector database."},
+        {id:"rag-stage-2", stageName:"Query", whatConsists:"The user question is embedded with the same embedding model that was used for the documents."},
+        {id:"rag-stage-3", stageName:"Retrieval", whatConsists:"A similarity search finds the nearest passages to the question vector. Optionally the results are re-ranked."},
+        {id:"rag-stage-4", stageName:"Augmentation", whatConsists:"The retrieved passages are inserted into the prompt as context, alongside the question and the system instructions."},
+        {id:"rag-stage-5", stageName:"Generation", whatConsists:"The foundation model answers using the supplied context, and can cite the source passages."}
+      ]
     }),
     matrixRound({
       id:"d3-313-rag-vs-fine-tuning",
@@ -264,6 +342,7 @@
       cardType:"Service matching",
       difficulty:"Intermediate",
       tags:["Amazon Bedrock Knowledge Bases","RAG"],
+      capacity:"many",
       slots:[["does","What Knowledge Bases does"],["not","What Knowledge Bases does not do"]],
       items:[
         {text:"Orchestrates ingestion, chunking, embeddings, vector storage integration, retrieval, and citations for RAG", answer:"does"},
@@ -280,12 +359,12 @@
       cardType:"Table completion",
       difficulty:"Intermediate",
       tags:["Vector databases","RAG"],
-      columns:[{id:"capability", label:"Vector capability"}, {id:"choose", label:"Choose it when"}, {id:"distinction", label:"Distinguishing feature"}],
+      columns:[{id:"capability", label:"Vector capability"}, {id:"choose", label:"Choose it when..."}],
       rows:[
-        {id:"opensearch", label:"Amazon OpenSearch Service", values:{capability:"Vector search with keyword and semantic search patterns.", choose:"You need search-oriented retrieval and hybrid search.", distinction:"Search service that can combine lexical and vector retrieval."}},
-        {id:"aurora", label:"Amazon Aurora PostgreSQL-Compatible Edition", values:{capability:"Stores vectors with PostgreSQL-compatible relational data.", choose:"Your application data already lives in Aurora PostgreSQL.", distinction:"Relational database plus vector similarity in Aurora."}},
-        {id:"rds", label:"Amazon RDS for PostgreSQL", values:{capability:"Managed PostgreSQL with vector extension support.", choose:"You want managed PostgreSQL without Aurora-specific architecture.", distinction:"Standard managed PostgreSQL option."}},
-        {id:"neptune", label:"Amazon Neptune", values:{capability:"Graph database retrieval with vector similarity where supported.", choose:"Relationships between entities matter alongside similarity.", distinction:"Graph relationships plus vector retrieval."}}
+        {id:"opensearch", label:"Amazon OpenSearch Service", values:{capability:"Vector engine with k-NN search, including OpenSearch Serverless. The default vector store for Bedrock Knowledge Bases.", choose:"You want a purpose-built search and vector engine, and hybrid keyword plus semantic search."}},
+        {id:"aurora", label:"Amazon Aurora (PostgreSQL-compatible)", values:{capability:"Vector storage and similarity search through the pgvector extension.", choose:"You already run Aurora and want vectors beside your relational data. Newly added to the in-scope list in v1.1."}},
+        {id:"rds", label:"Amazon RDS for PostgreSQL", values:{capability:"Vector storage and search through pgvector.", choose:"You need a managed PostgreSQL vector store without Aurora."}},
+        {id:"neptune", label:"Amazon Neptune", values:{capability:"Graph database with vector search over graph data (Neptune Analytics).", choose:"Relationships between entities matter as much as semantic similarity."}}
       ]
     }),
     matchRound({
