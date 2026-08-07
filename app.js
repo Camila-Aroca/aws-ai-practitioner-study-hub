@@ -5,6 +5,7 @@
   const OLD_DOMAIN1_KEY = "aif-c01-domain1-card-match-progress-v1";
   const data = window.HUB_DATA;
   const activities = data.activities;
+  const addendum = data.domain2Addendum || null;
   const reinforcementUnits = window.DOMAIN1_REINFORCEMENT_UNITS || [];
 
   const els = {
@@ -59,6 +60,10 @@
 
   function findActivity(id){
     return activities.find(activity => activity.id === id);
+  }
+
+  function dashboardActivities(){
+    return activities.filter(activity => activity.available !== false && !activity.hiddenFromDashboard);
   }
 
   function activityProgress(activityId){
@@ -129,7 +134,7 @@
   }
 
   function domainActivities(number){
-    return activities.filter(activity => activity.domain === number && activity.available !== false).sort((a,b) => a.order - b.order);
+    return activities.filter(activity => activity.domain === number && activity.available !== false && !activity.hiddenFromDashboard).sort((a,b) => a.order - b.order);
   }
 
   function route(){
@@ -137,6 +142,8 @@
     renderSidebar();
     if(hash.startsWith("#/domain/")){
       renderDomain(Number(hash.split("/")[2]));
+    }else if(hash.startsWith("#/addendum/domain2")){
+      renderDomain2Addendum();
     }else if(hash.startsWith("#/activity/")){
       renderActivity(hash.split("/")[2], hash.split("/")[3]);
     }else{
@@ -160,7 +167,7 @@
       group.className = "nav-domain";
       const link = navLink("#/domain/" + domain.number, "Domain " + domain.number);
       group.appendChild(link);
-      if(data.guideHierarchy && (domain.number === 1 || domain.number === 2)){
+      if(data.guideHierarchy && data.guideHierarchy.domains.some(item => item.number === domain.number)){
         group.appendChild(makeSidebarHierarchy(domain.number));
       }else{
         const list = document.createElement("div");
@@ -173,6 +180,7 @@
         group.appendChild(list);
       }
       els.sidebar.appendChild(group);
+      if(domain.number === 2 && addendum) els.sidebar.appendChild(makeAddendumSidebar());
     });
     wireSidebarToggles();
   }
@@ -190,6 +198,9 @@
     if(!hash.startsWith("#/activity/")) return hash;
     const parts = hash.split("/");
     const activity = findActivity(parts[2]);
+    if(addendum && activity && activity.id === addendum.activityId && !parts[3] && activity.rounds && activity.rounds[0]){
+      return "#/activity/" + activity.id + "/" + activity.rounds[0].id;
+    }
     if(activity && activity.module === "hub-card-engine" && !parts[3] && activity.rounds && activity.rounds[0]){
       return "#/activity/" + activity.id + "/" + activity.rounds[0].id;
     }
@@ -275,6 +286,59 @@
     return a;
   }
 
+  function makeAddendumSidebar(){
+    const activity = findActivity(addendum.activityId);
+    const group = document.createElement("section");
+    group.className = "nav-domain nav-addendum";
+    group.appendChild(navLink(addendum.overviewRoute, addendum.title));
+    const wrap = document.createElement("div");
+    wrap.className = "nav-guide";
+    wrap.appendChild(addendumOverviewLink());
+    (addendum.groups || []).forEach(item => wrap.appendChild(addendumGroupNode(activity, item)));
+    group.appendChild(wrap);
+    return group;
+  }
+
+  function addendumOverviewLink(){
+    const a = navLink(addendum.overviewRoute, "Overview");
+    a.classList.add("nav-cardset");
+    const count = document.createElement("span");
+    count.className = "nav-count";
+    count.textContent = "path";
+    a.appendChild(count);
+    return a;
+  }
+
+  function addendumGroupNode(activity, group){
+    const rounds = addendumRoundsForGroup(activity, group);
+    const open = rounds.some(round => currentSidebarHref() === addendumRoundRoute(round));
+    const node = document.createElement("section");
+    node.className = "nav-task";
+    node.appendChild(sidebarToggle("addendum-" + group.id, group.title, rounds[0] ? addendumRoundRoute(rounds[0]) : addendum.overviewRoute, rounds.reduce((sum, round) => sum + totalForRound(round), 0), open, "nav-task-toggle"));
+    const panel = document.createElement("div");
+    panel.id = "addendum-" + group.id;
+    panel.className = "nav-cardsets";
+    panel.hidden = !open;
+    rounds.forEach(round => panel.appendChild(sidebarCardSetLink({
+      activityId:activity.id,
+      roundId:round.id,
+      route:addendumRoundRoute(round),
+      title:round.title,
+      cardCount:totalForRound(round)
+    })));
+    node.appendChild(panel);
+    return node;
+  }
+
+  function addendumRoundsForGroup(activity, group){
+    if(!activity) return [];
+    return group.roundIds.map(id => activity.rounds.find(round => round.id === id)).filter(Boolean);
+  }
+
+  function addendumRoundRoute(round){
+    return "#/activity/" + addendum.activityId + "/" + round.id;
+  }
+
   function wireSidebarToggles(){
     document.querySelectorAll(".nav-toggle").forEach(button => {
       button.addEventListener("click", () => {
@@ -304,9 +368,10 @@
 
   function renderHome(){
     activeActivity = null;
-    const total = activities.length;
-    const mastered = activities.filter(activity => activityStats(activity).status === "Mastered").length;
-    const completed = activities.filter(activity => activityStats(activity).completed > 0).length;
+    const visible = dashboardActivities();
+    const total = visible.length;
+    const mastered = visible.filter(activity => activityStats(activity).status === "Mastered").length;
+    const completed = visible.filter(activity => activityStats(activity).completed > 0).length;
     const recent = recentlyCompleted();
     const weak = weakAreas();
     const continueActivity = findContinueActivity();
@@ -342,10 +407,10 @@
       </section>
     `;
     document.getElementById("continueBtn").addEventListener("click", () => {
-      setRoute("#/activity/" + (continueActivity ? continueActivity.id : activities[0].id));
+      setRoute("#/activity/" + (continueActivity ? continueActivity.id : visible[0].id));
     });
     document.getElementById("reviewBtn").addEventListener("click", () => {
-      const first = weak[0] || activities[0];
+      const first = weak[0] || visible[0];
       setRoute("#/activity/" + first.id);
     });
     wireRouteButtons();
@@ -390,9 +455,112 @@
     wireRouteButtons();
   }
 
+  function renderDomain2Addendum(){
+    activeActivity = null;
+    const activity = addendum && findActivity(addendum.activityId);
+    if(!addendum || !activity){ renderHome(); return; }
+    const stats = activityStats(activity);
+    const totalCards = countCards(activity);
+    const masteredCards = addendumMasteredCards(activity);
+    const attemptedCards = addendumAttemptedCards(activity);
+    const objectiveCounts = addendumObjectiveCounts(activity);
+    const next = nextAddendumRound(activity);
+    const finalRound = activity.rounds.find(round => round.id === "addendum-final-review") || activity.rounds[activity.rounds.length - 1];
+    els.app.innerHTML = `
+      <section class="hero-panel addendum-hero">
+        <p class="objective-label">Domain 2 addendum · focused gap review</p>
+        <h2>${escapeHTML(addendum.title)}</h2>
+        <p>${escapeHTML(addendum.description)}</p>
+        <div class="hero-actions">
+          <button class="act route-button" data-route="${next ? addendumRoundRoute(next) : addendumRoundRoute(activity.rounds[0])}" type="button">${stats.completed ? "Continue Addendum" : "Start Addendum"}</button>
+          <button class="act ghost route-button" data-route="${next ? addendumRoundRoute(next) : addendumRoundRoute(finalRound)}" type="button">Review Incorrect Cards</button>
+          <button class="act ghost route-button" data-route="${addendumRoundRoute(finalRound)}" type="button">Mixed Addendum Review</button>
+        </div>
+      </section>
+      <section class="summary-grid" aria-label="Addendum progress">
+        <div class="summary-card"><span>Card sets</span><b>${activity.rounds.length}</b></div>
+        <div class="summary-card"><span>Total cards</span><b>${totalCards}</b></div>
+        <div class="summary-card"><span>Sets completed</span><b>${stats.completed} / ${stats.totalRounds}</b></div>
+        <div class="summary-card"><span>Sets mastered</span><b>${stats.mastered} / ${stats.totalRounds}</b></div>
+        <div class="summary-card"><span>Cards attempted</span><b>${attemptedCards} / ${totalCards}</b></div>
+        <div class="summary-card"><span>Cards mastered</span><b>${masteredCards} / ${totalCards}</b></div>
+      </section>
+      <section class="page-section addendum-progress">
+        <div class="progress-bar" aria-label="${stats.mastered} of ${stats.totalRounds} addendum sets mastered"><span style="width:${stats.totalRounds ? stats.mastered / stats.totalRounds * 100 : 0}%"></span></div>
+        <p class="domain-meta">Suggested study order is shown below. Free navigation is always available; later sets are not locked.</p>
+      </section>
+      <section class="page-section addendum-filters">
+        <h3>Filter by Official Objective</h3>
+        <div class="badge-row">${Object.entries(objectiveCounts).map(([objective, count]) => `<span class="objective-badge">EXPANDS ${objective} · ${count}</span>`).join("")}</div>
+      </section>
+      <section class="page-section addendum-units">
+        <h3>Suggested Study Order</h3>
+        ${addendum.groups.map(group => renderAddendumGroup(activity, group)).join("")}
+      </section>
+    `;
+    wireRouteButtons();
+  }
+
+  function renderAddendumGroup(activity, group){
+    const rounds = addendumRoundsForGroup(activity, group);
+    return `<section class="task-group addendum-group" id="addendum-group-${group.id}">
+      <h3>${escapeHTML(group.title)}</h3>
+      <div class="activity-list">${rounds.map(round => renderAddendumRoundCard(activity, round)).join("")}</div>
+    </section>`;
+  }
+
+  function renderAddendumRoundCard(activity, round){
+    const rp = roundProgress(activity.id, round.id);
+    const total = totalForRound(round);
+    const best = rp.total ? Math.round((rp.bestScore || 0) / rp.total * 100) : 0;
+    const status = rp.mastered ? "Mastered" : rp.attempts ? "In progress" : rp.revealed ? "Revealed" : "Not started";
+    const objectives = (round.objectiveCodes || activity.objectiveCodes).join(", ");
+    const description = (round.instructions || "").split(". ")[0] + ".";
+    const isChallenge = /challenge/i.test(round.difficulty || round.title || "") || (round.tags || []).includes("challenge");
+    return `<article class="activity-card addendum-unit">
+      <div>
+        <p class="objective-label">EXPANDS ${escapeHTML(objectives)} · ${escapeHTML(round.hierarchy.difficulty)} · ${isChallenge ? "Normal + Challenge" : "Normal mode"}</p>
+        <h4>${escapeHTML(round.title)}</h4>
+        <p>${escapeHTML(description)}</p>
+        <p class="domain-meta">${total} cards · ${status} · Best ${best}% · ${escapeHTML(round.hierarchy.priority)}</p>
+      </div>
+      <div class="activity-status">
+        <span class="status-pill">${status}</span>
+        <button class="act route-button" data-route="${addendumRoundRoute(round)}" type="button">${rp.attempts ? "Continue" : "Start"}</button>
+      </div>
+    </article>`;
+  }
+
+  function nextAddendumRound(activity){
+    return activity.rounds.find(round => !roundProgress(activity.id, round.id).mastered) || activity.rounds[0];
+  }
+
+  function addendumMasteredCards(activity){
+    return activity.rounds.reduce((sum, round) => {
+      const rp = roundProgress(activity.id, round.id);
+      return sum + (rp.mastered ? totalForRound(round) : 0);
+    }, 0);
+  }
+
+  function addendumAttemptedCards(activity){
+    return activity.rounds.reduce((sum, round) => {
+      const rp = roundProgress(activity.id, round.id);
+      return sum + (rp.attempts || rp.revealed ? totalForRound(round) : 0);
+    }, 0);
+  }
+
+  function addendumObjectiveCounts(activity){
+    return activity.rounds.reduce((counts, round) => {
+      (round.objectiveCodes || []).forEach(objective => {
+        counts[objective] = (counts[objective] || 0) + totalForRound(round);
+      });
+      return counts;
+    }, {});
+  }
+
   function renderGuideHierarchy(number, acts){
     const guide = data.guideHierarchy && data.guideHierarchy.domains.find(item => item.number === number);
-    if(!guide || (number !== 1 && number !== 2)) return "";
+    if(!guide) return "";
     const sets = guideCardSets(number, acts);
     const domainTotal = sets.reduce((sum, set) => sum + set.cardCount, 0);
     const domainFirst = acts.find(activity => activity.module === "hub-card-engine");
@@ -556,22 +724,23 @@
 
     const round = currentRound();
     const nav = activityNav(activity);
+    const inAddendum = isAddendumActivity(activity);
     els.app.innerHTML = `
       <section class="activity-shell">
         <header class="activity-header">
           <div>
-            <p class="objective-label">Domain ${activity.domain} · ${activity.taskStatement} · ${activity.objectiveCodes.join(", ")}</p>
+            <p class="objective-label">Domain ${activity.domain} · ${activity.taskStatement} · ${(round.objectiveCodes || activity.objectiveCodes).join(", ")}</p>
             <h2>${activity.title}</h2>
             <p>${activity.shortDescription}</p>
           </div>
           <div class="activity-links">
             <button class="link-button route-button" data-route="#/home" type="button">Dashboard</button>
-            <button class="link-button route-button" data-route="#/domain/${activity.domain}" type="button">Back to domain</button>
+            <button class="link-button route-button" data-route="${inAddendum ? addendum.overviewRoute : "#/domain/" + activity.domain}" type="button">${inAddendum ? "Back to addendum" : "Back to domain"}</button>
           </div>
         </header>
         <nav class="activity-nav" aria-label="Activity sequence">
-          ${nav.prev ? `<button class="act ghost route-button" data-route="#/activity/${nav.prev.id}" type="button">Previous activity</button>` : ""}
-          ${nav.next ? `<button class="act ghost route-button" data-route="#/activity/${nav.next.id}" type="button">Next activity</button>` : ""}
+          ${nav.prev ? `<button class="act ghost route-button" data-route="${inAddendum ? addendumRoundRoute(nav.prev) : "#/activity/" + nav.prev.id}" type="button">${inAddendum ? "Previous addendum set" : "Previous activity"}</button>` : ""}
+          ${nav.next ? `<button class="act ghost route-button" data-route="${inAddendum ? addendumRoundRoute(nav.next) : "#/activity/" + nav.next.id}" type="button">${inAddendum ? "Next addendum set" : "Next activity"}</button>` : ""}
         </nav>
         <nav class="rounds" id="roundTabs" role="tablist" aria-label="Rounds">${activity.rounds.map(roundTab).join("")}</nav>
         <section class="round-panel">
@@ -618,13 +787,22 @@
     const norm = normalizeRound(round);
     const bank = document.getElementById("bank");
     const board = document.getElementById("board");
+    document.querySelector(".bank-head").hidden = norm.layout === "true-false";
+    bank.hidden = norm.layout === "true-false";
+    document.getElementById("btnShuffle").hidden = false;
     document.getElementById("roundIntro").textContent = norm.intro;
     document.getElementById("sourceNote").innerHTML = norm.footnote || norm.sourceNote || "";
     document.getElementById("roundProgress").textContent = progressText(activeActivity, round);
     bank.innerHTML = "";
     board.innerHTML = "";
+    if(norm.layout === "true-false"){
+      renderTrueFalseBoard(norm);
+      wireTrueFalseControls(norm);
+      return;
+    }
     shuffle(norm.cards).forEach(card => bank.appendChild(makeCard(card)));
-    norm.destinations.forEach((destination, index) => board.appendChild(makeDestination(destination, index, norm)));
+    if(norm.layout === "matrix") renderMatrixBoard(board, norm);
+    else norm.destinations.forEach((destination, index) => board.appendChild(makeDestination(destination, index, norm)));
     refreshBankEmpty();
     wireControls(norm);
     updateTally();
@@ -633,6 +811,8 @@
   function normalizeRound(round){
     if(round.cards && round.destinations){
       return {
+        layout:round.layout || "",
+        table:round.table,
         intro:round.instructions || round.intro || "",
         footnote:round.footnote,
         sourceNote:round.sourceNote,
@@ -706,6 +886,105 @@
       concept.appendChild(wrap);
     });
     return concept;
+  }
+
+  function renderMatrixBoard(board, norm){
+    const table = norm.table || {};
+    const wrap = document.createElement("div");
+    wrap.className = "matrix-wrap";
+    const grid = document.createElement("div");
+    grid.className = "source-matrix";
+    const columns = table.columns || [];
+    const rows = table.rows || [];
+    grid.style.gridTemplateColumns = "minmax(8rem,.75fr) repeat(" + columns.length + ", minmax(11rem,1fr))";
+    const corner = document.createElement("div");
+    corner.className = "matrix-head matrix-corner";
+    corner.textContent = table.rowHeader || "";
+    grid.appendChild(corner);
+    columns.forEach(column => {
+      const head = document.createElement("div");
+      head.className = "matrix-head";
+      head.textContent = column.label;
+      grid.appendChild(head);
+    });
+    rows.forEach(row => {
+      const label = document.createElement("div");
+      label.className = "matrix-row-label";
+      label.textContent = row.label;
+      grid.appendChild(label);
+      columns.forEach(column => {
+        const destination = norm.destinations.find(item => item.id === row.id + "-" + column.id);
+        const cell = document.createElement("div");
+        cell.className = "matrix-cell";
+        cell.setAttribute("aria-label", column.label);
+        const slot = document.createElement("div");
+        slot.className = "slot";
+        slot.dataset.expects = destination.id;
+        slot.dataset.capacity = "one";
+        slot.tabIndex = 0;
+        slot.setAttribute("role","button");
+        slot.setAttribute("aria-label", row.label + " - " + column.label);
+        wireSlot(slot);
+        const mark = document.createElement("span");
+        mark.className = "mark";
+        cell.appendChild(slot);
+        cell.appendChild(mark);
+        grid.appendChild(cell);
+      });
+    });
+    wrap.appendChild(grid);
+    board.appendChild(wrap);
+  }
+
+  function renderTrueFalseBoard(norm){
+    const board = document.getElementById("board");
+    board.innerHTML = "";
+    const list = document.createElement("div");
+    list.className = "tf-list";
+    norm.cards.forEach((card, index) => {
+      const item = document.createElement("section");
+      item.className = "tf-item";
+      item.dataset.cardId = card.id;
+      item.innerHTML = `<div class="tf-statement"><span>${String(index + 1).padStart(2,"0")}</span><p>${escapeHTML(card.text)}</p></div>
+        <div class="tf-actions" role="radiogroup" aria-label="${escapeHTML(card.text)}">
+          <button class="tf-choice" type="button" data-value="true">True</button>
+          <button class="tf-choice" type="button" data-value="false">False</button>
+        </div>
+        <p class="tf-reason" hidden></p>`;
+      list.appendChild(item);
+    });
+    board.appendChild(list);
+    document.querySelectorAll(".tf-choice").forEach(button => {
+      button.addEventListener("click", () => {
+        const item = button.closest(".tf-item");
+        item.querySelectorAll(".tf-choice").forEach(choice => choice.classList.remove("is-selected"));
+        button.classList.add("is-selected");
+        item.dataset.answer = button.dataset.value;
+        clearAfterTrueFalseMove();
+      });
+    });
+    updateTally();
+  }
+
+  function wireTrueFalseControls(norm){
+    document.getElementById("btnCheck").addEventListener("click", () => checkTrueFalse(norm));
+    document.getElementById("btnShuffle").hidden = true;
+    document.getElementById("btnClear").addEventListener("click", () => {
+      document.querySelectorAll(".tf-item").forEach(item => {
+        item.dataset.answer = "";
+        item.classList.remove("is-correct","is-wrong");
+        item.querySelectorAll(".tf-choice").forEach(choice => choice.classList.remove("is-selected"));
+        const reason = item.querySelector(".tf-reason");
+        reason.hidden = true;
+        reason.textContent = "";
+      });
+      checked = false;
+      revealedThisAttempt = false;
+      document.getElementById("verdict").textContent = "";
+      updateTally();
+    });
+    document.getElementById("btnReveal").addEventListener("click", () => revealTrueFalse(norm));
+    updateTally();
   }
 
   function makeCard(card){
@@ -845,6 +1124,78 @@
     renderSidebar();
   }
 
+  function checkTrueFalse(norm){
+    const items = Array.from(document.querySelectorAll(".tf-item"));
+    let correct = 0;
+    let answered = 0;
+    items.forEach(item => {
+      item.classList.remove("is-correct","is-wrong");
+      const card = norm.cards.find(entry => entry.id === item.dataset.cardId);
+      const expected = String(card.answer);
+      const given = item.dataset.answer || "";
+      const reason = item.querySelector(".tf-reason");
+      if(!given){
+        reason.hidden = true;
+        return;
+      }
+      answered += 1;
+      reason.hidden = false;
+      reason.textContent = card.explanation || card.distractorBoundary || "";
+      if(given === expected){
+        correct += 1;
+        item.classList.add("is-correct");
+      }else{
+        item.classList.add("is-wrong");
+      }
+    });
+    checked = true;
+    const total = norm.cards.length;
+    const mastered = correct === total && !revealedThisAttempt;
+    const rp = roundProgress(activeActivity.id, activeRoundId);
+    Object.assign(rp, {
+      bestScore:Math.max(rp.bestScore || 0, correct),
+      lastScore:correct,
+      total,
+      attempts:(rp.attempts || 0) + 1,
+      completed:rp.completed || mastered,
+      mastered:rp.mastered || mastered,
+      revealed:rp.revealed || revealedThisAttempt,
+      lastCompletedDate:mastered ? new Date().toISOString() : rp.lastCompletedDate
+    });
+    saveProgress();
+    document.getElementById("roundProgress").textContent = progressText(activeActivity, currentRound());
+    const verdict = document.getElementById("verdict");
+    if(!answered) verdict.textContent = "Choose True or False for at least one statement first.";
+    else if(mastered){
+      verdict.textContent = "All " + total + " statements correct. This round is mastered.";
+      verdict.className = "verdict win";
+      showCompletionActions();
+    }else if(correct === total) verdict.textContent = "All answers are correct, but this attempt used Reveal, so it is not counted as mastered.";
+    else verdict.textContent = correct + " of " + total + " correct. Review the source reasons and retry missed statements.";
+    renderSidebar();
+  }
+
+  function revealTrueFalse(norm){
+    revealedThisAttempt = true;
+    norm.cards.forEach(card => {
+      const item = document.querySelector('.tf-item[data-card-id="' + CSS.escape(card.id) + '"]');
+      if(!item) return;
+      item.dataset.answer = String(card.answer);
+      item.classList.remove("is-wrong");
+      item.classList.add("is-correct");
+      item.querySelectorAll(".tf-choice").forEach(choice => choice.classList.toggle("is-selected", choice.dataset.value === String(card.answer)));
+      const reason = item.querySelector(".tf-reason");
+      reason.hidden = false;
+      reason.textContent = card.explanation || card.distractorBoundary || "";
+    });
+    const rp = roundProgress(activeActivity.id, activeRoundId);
+    rp.revealed = true;
+    rp.total = norm.cards.length;
+    saveProgress();
+    updateTally();
+    document.getElementById("verdict").textContent = "Answers revealed. This attempt will not count as mastered.";
+  }
+
   function revealAnswers(norm){
     clearBoard(false);
     revealedThisAttempt = true;
@@ -872,19 +1223,20 @@
     const box = document.getElementById("explanations");
     const nextRound = nextRoundId();
     const callout = currentRound().completionCallout;
+    const inAddendum = isAddendumActivity(activeActivity);
     box.hidden = false;
     box.innerHTML = `${callout ? `<div class="exam-tip"><h3>${escapeHTML(callout.title)}</h3><p>${escapeHTML(callout.text)}</p></div>` : ""}
       <h3>Next step</h3>
       <button class="act ghost" id="retryRound" type="button">Retry</button>
       ${nextRound ? `<button class="act" id="nextRound" type="button">Continue to next round</button>` : `<button class="act" id="nextActivity" type="button">Continue to next activity</button>`}
-      <button class="act ghost route-button" data-route="#/domain/${activeActivity.domain}" type="button">Return to domain</button>`;
+      <button class="act ghost route-button" data-route="${inAddendum ? addendum.overviewRoute : "#/domain/" + activeActivity.domain}" type="button">${inAddendum ? "Return to addendum" : "Return to domain"}</button>`;
     document.getElementById("retryRound").addEventListener("click", () => renderActivity(activeActivity.id, activeRoundId));
     const next = document.getElementById("nextRound") || document.getElementById("nextActivity");
     next.addEventListener("click", () => {
       if(nextRound) setRoute("#/activity/" + activeActivity.id + "/" + nextRound);
       else {
         const nav = activityNav(activeActivity);
-        setRoute(nav.next ? "#/activity/" + nav.next.id : "#/home");
+        setRoute(nav.next ? (inAddendum ? addendumRoundRoute(nav.next) : "#/activity/" + nav.next.id) : (inAddendum ? addendum.overviewRoute : "#/home"));
       }
     });
     wireRouteButtons();
@@ -907,6 +1259,16 @@
     if(checked) document.querySelectorAll(".slot").forEach(clearSlotState);
     checked = false;
     refreshBankEmpty();
+    updateTally();
+  }
+
+  function clearAfterTrueFalseMove(){
+    if(checked) document.querySelectorAll(".tf-item").forEach(item => item.classList.remove("is-correct","is-wrong"));
+    checked = false;
+    document.getElementById("verdict").textContent = "";
+    const ex = document.getElementById("explanations");
+    ex.hidden = true;
+    ex.innerHTML = "";
     updateTally();
   }
 
@@ -944,7 +1306,7 @@
   }
 
   function updateTally(){
-    const placed = document.querySelectorAll(".slot .card").length;
+    const placed = document.querySelectorAll(".tf-item[data-answer='true'], .tf-item[data-answer='false']").length || document.querySelectorAll(".slot .card").length;
     const total = totalForRound(currentRound());
     const title = document.getElementById("roundTitle");
     if(title) title.dataset.tally = placed + " / " + total;
@@ -999,19 +1361,28 @@
   }
 
   function activityNav(activity){
+    if(isAddendumActivity(activity)){
+      const idx = activity.rounds.findIndex(round => round.id === activeRoundId);
+      return {prev:activity.rounds[idx - 1], next:activity.rounds[idx + 1]};
+    }
     const idx = activities.findIndex(item => item.id === activity.id);
     return {prev:activities[idx - 1], next:activities[idx + 1]};
   }
 
+  function isAddendumActivity(activity){
+    return !!(addendum && activity && activity.id === addendum.activityId);
+  }
+
   function findContinueActivity(){
     const last = progress.lastOpenedActivity && findActivity(progress.lastOpenedActivity);
-    if(last && activityStats(last).status !== "Mastered") return last;
-    return activities.find(activity => activityStats(activity).status !== "Mastered") || activities[0];
+    const visible = dashboardActivities();
+    if(last && visible.includes(last) && activityStats(last).status !== "Mastered") return last;
+    return visible.find(activity => activityStats(activity).status !== "Mastered") || visible[0];
   }
 
   function weakAreas(){
     const recommended = domain1ReinforcementActivities().filter(activity => recommendedReinforcement(activity.id).recommended);
-    const regular = activities.filter(activity => {
+    const regular = dashboardActivities().filter(activity => {
       const stats = activityStats(activity);
       return activity.module !== "domain1-reinforcement-unit" && stats.status !== "Mastered" && (stats.attempts > 0 || stats.revealed || stats.bestPercent < 80);
     });
@@ -1019,7 +1390,7 @@
   }
 
   function recentlyCompleted(){
-    return activities
+    return dashboardActivities()
       .map(activity => ({activity, date:lastCompletedDate(activity)}))
       .filter(item => item.date)
       .sort((a,b) => b.date.localeCompare(a.date))

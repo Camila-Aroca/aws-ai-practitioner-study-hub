@@ -58,15 +58,19 @@
     };
   });
 
+  const domain2AddendumActivity = window.DOMAIN2_ADDENDUM_ACTIVITY || null;
+  const domains345Activities = window.DOMAINS_345_ACTIVITIES || [];
+
   window.HUB_DATA = {
     guideHierarchy: window.GUIDE_HIERARCHY,
+    domain2Addendum: window.DOMAIN2_ADDENDUM,
     domains: [
       {number:1, title:"Fundamentals of AI and ML", description:"AI/ML concepts, use cases, development lifecycle, services, MLOps, and metrics."},
       {number:2, title:"Fundamentals of Generative AI", description:"Generative AI concepts, foundation models, agents, AWS GenAI services, value, limitations, and costs."},
-      {number:3, title:"Applications of Foundation Models", description:"Prompting, RAG, model selection, customization, and evaluation activities can be added here."},
-      {number:4, title:"Guidelines for Responsible AI", description:"Responsible AI, transparency, explainability, and human-centered design activities can be added here."},
-      {number:5, title:"Security, Compliance, and Governance for AI Solutions", description:"Security, compliance, governance, and data-protection activities can be added here."}
+      {number:3, title:"Applications of Foundation Models", description:"Prompting, RAG, model selection, customization, agent behavior, training, fine-tuning, and evaluation."},
+      {number:4, title:"Guidelines for Responsible AI", description:"Responsible AI, transparency, explainability, bias and variance, monitoring, and human-centered design."},
+      {number:5, title:"Security, Compliance, and Governance for AI Solutions", description:"Security services, data lineage, secure data engineering, hallucination defense, compliance, and governance."}
     ],
-    activities: [domain1Intro].concat(window.HUB_LEGACY_ACTIVITIES || [], reinforcementActivities, [domain1Exam]).sort((a,b) => a.order - b.order)
+    activities: [domain1Intro].concat(window.HUB_LEGACY_ACTIVITIES || [], reinforcementActivities, domain2AddendumActivity ? [domain2AddendumActivity] : [], domains345Activities, [domain1Exam]).sort((a,b) => a.order - b.order)
   };
 })();

@@ -5,7 +5,7 @@ const context = {window:{}};
 context.window.window = context.window;
 vm.createContext(context);
 
-["data/domain1.js","data/legacy-activities.js","data/exams/domain1-exam-config.js","data/exams/domain1-question-bank.js","data/reinforcement/domain1-reinforcement.js","data/study-hub.js"].forEach(file => {
+["data/domain1.js","data/legacy-activities.js","data/guide-hierarchy.js","data/exams/domain1-exam-config.js","data/exams/domain1-question-bank.js","data/reinforcement/domain1-reinforcement.js","data/domain2-addendum.js","data/domains345.js","data/study-hub.js"].forEach(file => {
   vm.runInContext(fs.readFileSync(file, "utf8"), context, {filename:file});
 });
 

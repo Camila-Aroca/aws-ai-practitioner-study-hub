@@ -12,6 +12,8 @@ vm.createContext(context);
   "data/exams/domain1-exam-config.js",
   "data/exams/domain1-question-bank.js",
   "data/reinforcement/domain1-reinforcement.js",
+  "data/domain2-addendum.js",
+  "data/domains345.js",
   "data/study-hub.js"
 ].forEach(file => {
   vm.runInContext(fs.readFileSync(file, "utf8"), context, {filename:file});
@@ -22,14 +24,14 @@ const guide = context.window.GUIDE_HIERARCHY;
 const errors = [];
 const cardIds = new Set();
 const cardPairs = new Set();
-const supportedTypes = new Set(["Definition","Service identification","Use case","Scenario","Comparison","Feature recognition","Exam clue","Mixed review"]);
+const supportedTypes = new Set(["Definition","Service identification","Use case","Scenario","Comparison","Feature recognition","Exam clue","Mixed review","Table completion","True/false","Ordering","Service matching"]);
 
 if(!hub) errors.push("Missing HUB_DATA.");
 if(!guide) errors.push("Missing GUIDE_HIERARCHY.");
 
 const subtasks = new Set();
 if(guide){
-  guide.domains.filter(domain => domain.number === 1 || domain.number === 2).forEach(domain => {
+  guide.domains.filter(domain => domain.number >= 1 && domain.number <= 5).forEach(domain => {
     domain.tasks.forEach(task => {
       task.subtasks.forEach(subtask => subtasks.add(subtask.subtaskId));
     });
@@ -52,7 +54,7 @@ function cardsFor(round){
 }
 
 if(hub){
-  hub.activities.filter(activity => (activity.domain === 1 || activity.domain === 2) && activity.module === "hub-card-engine").forEach(activity => {
+  hub.activities.filter(activity => activity.domain >= 1 && activity.domain <= 5 && activity.module === "hub-card-engine").forEach(activity => {
     (activity.rounds || []).forEach(round => {
       if(!round.hierarchy) errors.push(`${activity.id}/${round.id} missing hierarchy metadata`);
       if(round.hierarchy){
@@ -84,4 +86,4 @@ if(errors.length){
   process.exit(1);
 }
 
-console.log(`Validated guide hierarchy metadata for ${cardIds.size} Domain 1/2 cards across ${subtasks.size} guide subtasks.`);
+console.log(`Validated guide hierarchy metadata for ${cardIds.size} Domain 1-5 cards across ${subtasks.size} guide subtasks.`);

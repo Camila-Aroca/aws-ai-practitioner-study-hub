@@ -32,7 +32,45 @@
     "2.3.1":"AWS services for building GenAI applications",
     "2.3.2":"Advantages of using AWS GenAI services",
     "2.3.3":"Benefits of AWS infrastructure for GenAI",
-    "2.3.4":"Cost tradeoffs of AWS GenAI services"
+    "2.3.4":"Cost tradeoffs of AWS GenAI services",
+    "3.1.1":"Selection criteria for choosing a foundation model",
+    "3.1.2":"Inference parameters",
+    "3.1.3":"Retrieval Augmented Generation",
+    "3.1.4":"AWS services for storing embeddings in vector databases",
+    "3.1.5":"Cost tradeoffs across FM customisation approaches",
+    "3.1.6":"Role of AI agents and business applications",
+    "3.2.1":"Prompt constructs",
+    "3.2.2":"Prompt engineering techniques",
+    "3.2.3":"Benefits and best practices for prompt engineering",
+    "3.2.4":"Risks and limitations of prompt engineering",
+    "3.2.5":"Prompt versioning and management with Amazon Bedrock Prompt Management",
+    "3.3.1":"Key elements of training a foundation model",
+    "3.3.2":"Methods for fine-tuning",
+    "3.3.3":"Preparing data to fine-tune a foundation model",
+    "3.4.1":"Approaches to evaluating foundation model performance",
+    "3.4.2":"Metrics to assess foundation model performance",
+    "3.4.3":"Determining whether an FM meets business objectives",
+    "3.4.4":"Evaluating applications built with foundation models",
+    "3.4.5":"Business objective alignment metrics",
+    "4.1.1":"Features of responsible AI",
+    "4.1.2":"Tools to identify features of responsible AI",
+    "4.1.3":"Responsible practices for selecting a model",
+    "4.1.4":"Legal risks of working with generative AI",
+    "4.1.5":"Characteristics of good datasets",
+    "4.1.6":"Effects of bias and variance",
+    "4.1.7":"Tools to detect and monitor bias, trustworthiness, and truthfulness",
+    "4.2.1":"Transparency versus explainability",
+    "4.2.2":"Tools to identify transparent and explainable models",
+    "4.2.3":"Safety-transparency and interpretability-performance tradeoff",
+    "4.2.4":"Human-centred design for explainable AI",
+    "5.1.1":"AWS services and features to secure AI systems",
+    "5.1.2":"Source citation and documenting data origins",
+    "5.1.3":"Best practices for secure data engineering",
+    "5.1.4":"Security/privacy considerations for AI systems",
+    "5.1.5":"Hallucination detection and grounding techniques",
+    "5.2.1":"AWS services for governance and regulatory compliance",
+    "5.2.2":"Data governance strategies",
+    "5.2.3":"Processes for following governance protocols"
   };
 
   const hierarchy = {
@@ -57,6 +95,38 @@
           task("2.1","Explain the basic concepts of generative AI",["2.1.1","2.1.2","2.1.3","2.1.4","2.1.5","2.1.6"]),
           task("2.2","Understand the capabilities and limitations of GenAI",["2.2.1","2.2.2","2.2.3","2.2.4"]),
           task("2.3","Describe AWS infrastructure and technologies for GenAI",["2.3.1","2.3.2","2.3.3","2.3.4"])
+        ]
+      },
+      {
+        domainId:"domain-3",
+        number:3,
+        title:"Applications of Foundation Models",
+        weight:"28%",
+        tasks:[
+          task("3.1","Describe design considerations for applications that use foundation models",["3.1.1","3.1.2","3.1.3","3.1.4","3.1.5","3.1.6"]),
+          task("3.2","Choose effective prompt engineering techniques",["3.2.1","3.2.2","3.2.3","3.2.4","3.2.5"]),
+          task("3.3","Describe the training and fine-tuning process for foundation models",["3.3.1","3.3.2","3.3.3"]),
+          task("3.4","Describe methods to evaluate foundation model performance",["3.4.1","3.4.2","3.4.3","3.4.4","3.4.5"])
+        ]
+      },
+      {
+        domainId:"domain-4",
+        number:4,
+        title:"Guidelines for Responsible AI",
+        weight:"14%",
+        tasks:[
+          task("4.1","Explain the development of AI systems that are responsible",["4.1.1","4.1.2","4.1.3","4.1.4","4.1.5","4.1.6","4.1.7"]),
+          task("4.2","Recognize the importance of transparent and explainable models",["4.2.1","4.2.2","4.2.3","4.2.4"])
+        ]
+      },
+      {
+        domainId:"domain-5",
+        number:5,
+        title:"Security, Compliance, and Governance for AI Solutions",
+        weight:"14%",
+        tasks:[
+          task("5.1","Explain methods to secure AI systems",["5.1.1","5.1.2","5.1.3","5.1.4","5.1.5"]),
+          task("5.2","Recognize governance and compliance regulations for AI systems",["5.2.1","5.2.2","5.2.3"])
         ]
       }
     ],
@@ -85,7 +155,7 @@
   function cardSetMeta(domainNumber, objective, title, cardType, difficulty, tags){
     return {
       domainId:"domain-" + domainNumber,
-      domainTitle:domainNumber === 1 ? "Fundamentals of AI and ML" : "Fundamentals of GenAI",
+      domainTitle:(hierarchy.domains.find(function(item){ return item.number === domainNumber; }) || {}).title || "Domain " + domainNumber,
       taskId:"task-" + taskCodeFor(objective).replace(".","-"),
       taskTitle:taskTitleFor(objective),
       subtaskId:objective,

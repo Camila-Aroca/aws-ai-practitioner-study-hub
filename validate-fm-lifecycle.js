@@ -12,6 +12,7 @@ vm.createContext(context);
   "data/exams/domain1-exam-config.js",
   "data/exams/domain1-question-bank.js",
   "data/reinforcement/domain1-reinforcement.js",
+  "data/domain2-addendum.js",
   "data/study-hub.js"
 ].forEach(file => {
   vm.runInContext(fs.readFileSync(file, "utf8"), context, {filename:file});

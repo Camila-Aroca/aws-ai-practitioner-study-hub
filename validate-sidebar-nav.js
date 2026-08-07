@@ -12,6 +12,8 @@ vm.createContext(context);
   "data/exams/domain1-exam-config.js",
   "data/exams/domain1-question-bank.js",
   "data/reinforcement/domain1-reinforcement.js",
+  "data/domain2-addendum.js",
+  "data/domains345.js",
   "data/study-hub.js"
 ].forEach(file => {
   vm.runInContext(fs.readFileSync(file, "utf8"), context, {filename:file});
@@ -49,7 +51,7 @@ function guideSets(domainNumber){
   return rows;
 }
 
-[1,2].forEach(domainNumber => {
+[1,2,3,4,5].forEach(domainNumber => {
   const domain = guide.domains.find(item => item.number === domainNumber);
   if(!domain) errors.push(`Missing guide domain ${domainNumber}`);
   const sets = guideSets(domainNumber);
@@ -79,4 +81,4 @@ if(errors.length){
   process.exit(1);
 }
 
-console.log(`Validated hierarchical sidebar model for ${guideSets(1).length + guideSets(2).length} Domain 1/2 card-set links.`);
+console.log(`Validated hierarchical sidebar model for ${[1,2,3,4,5].reduce((sum, domainNumber) => sum + guideSets(domainNumber).length, 0)} Domain 1-5 card-set links.`);
