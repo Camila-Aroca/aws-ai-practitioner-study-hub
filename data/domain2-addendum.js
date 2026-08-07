@@ -98,9 +98,10 @@
   }
 
   function sequenceRound(config){
+    const slotPrefix = config.slotPrefix || "Step";
     return round(Object.assign({}, config, {
       activity:"match",
-      destinations:config.steps.map((step, idx) => ({id:"step-" + (idx + 1), label:String(idx + 1) + ". " + step.name, sub:step.sub || ""})),
+      destinations:config.steps.map((step, idx) => ({id:"step-" + (idx + 1), label:slotPrefix + " " + (idx + 1), sub:step.sub || "Place the correct source step here."})),
       cards:config.steps.map((step, idx) => card(config.id, idx + 1, step.name + (step.detail ? " — " + step.detail : ""), "step-" + (idx + 1), "Ordering", config.difficulty, config.priority, config.tags, "Restore the original source order."))
     }));
   }
@@ -334,6 +335,7 @@
       priority:"MUST KNOW",
       tags:["fm-lifecycle","sequence"],
       instructions:"Restore the seven-stage foundation-model lifecycle sequence from the addendum.",
+      slotPrefix:"Lifecycle stage",
       steps:[
         {name:"Data selection"},
         {name:"Model selection"},
@@ -487,6 +489,7 @@
       priority:"MUST KNOW",
       tags:["rag","sequence"],
       instructions:"Restore the exact query-time RAG order from the addendum.",
+      slotPrefix:"Query step",
       steps:[
         {name:"Embed the query"},
         {name:"Perform similarity search"},

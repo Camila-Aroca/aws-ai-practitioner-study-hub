@@ -120,12 +120,13 @@
   }
 
   function sequenceRound(config){
+    const slotPrefix = config.slotPrefix || "Step";
     return decorate(config, {
       id:config.id,
       title:config.title,
       activity:"match",
       instructions:config.instructions || "Restore the source sequence in order.",
-      destinations:config.steps.map(function(step, idx){ return {id:"step-" + (idx + 1), label:String(idx + 1) + ". " + step}; }),
+      destinations:config.steps.map(function(step, idx){ return {id:"step-" + (idx + 1), label:slotPrefix + " " + (idx + 1), sub:"Place the correct source step here."}; }),
       cards:config.steps.map(function(step, idx){ return {text:step, answer:"step-" + (idx + 1), explanation:step + " belongs in position " + (idx + 1) + " of the guide sequence."}; })
     });
   }
