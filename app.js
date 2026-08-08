@@ -415,8 +415,8 @@
         <div class="domain-grid">
           <article class="domain-card">
             <p class="objective-label">Question Bank</p>
-            <h3>Master Study Guide CYU Bank</h3>
-            <p>Review all ${cyuQuestions.length} extracted Check Your Understanding questions by domain, objective, type, missed status, or unseen status.</p>
+            <h3>Master Question Bank</h3>
+            <p>Review all ${cyuQuestions.length} master-bank questions by domain, objective, type, missed status, or unseen status.</p>
             <button class="act ghost route-button" data-route="#/question-bank" type="button">Open question bank</button>
           </article>
           <article class="domain-card">
@@ -1775,14 +1775,14 @@
       <section class="hero-panel">
         <p class="objective-label">Final Exam Center</p>
         <h2>Question bank and full simulated exam.</h2>
-        <p>Uses the Check Your Understanding questions extracted from the Master Study Guide. Feedback stays hidden during the full simulation and appears only after submission.</p>
+        <p>Uses the authoritative master question bank for the study hub. Feedback stays hidden during the full simulation and appears only after submission.</p>
         <div class="hero-actions">
           <button class="act route-button" data-route="#/question-bank" type="button">Open question bank</button>
           <button class="act ghost route-button" data-route="#/full-exam/start" type="button">Start full exam</button>
         </div>
       </section>
-      <section class="summary-grid" aria-label="CYU bank summary">
-        <div class="summary-card"><span>Total CYU questions</span><b>${cyuQuestions.length}</b></div>
+      <section class="summary-grid" aria-label="Master question bank summary">
+        <div class="summary-card"><span>Total questions</span><b>${cyuQuestions.length}</b></div>
         <div class="summary-card"><span>Objectives covered</span><b>${Object.keys(cyuObjectiveCounts()).length}</b></div>
         <div class="summary-card"><span>Full exam</span><b>${fullExamConfig.questionCount} questions</b></div>
         <div class="summary-card"><span>Timer</span><b>${fullExamConfig.timeLimitMinutes} minutes</b></div>
@@ -1833,8 +1833,8 @@
     els.app.innerHTML = `
       <section class="page-section">
         <p class="objective-label">Question Bank</p>
-        <h2>Master Study Guide CYU Bank</h2>
-        <p class="muted">Practice one question at a time. Feedback includes only sourced answer material extracted from the guide.</p>
+        <h2>Master Question Bank</h2>
+        <p class="muted">Practice one question at a time. Feedback includes the stored source explanation for each question.</p>
         <div class="hero-actions">
           <button class="act route-button" data-route="#/question-bank/filter/all" type="button">Review all</button>
           <button class="act ghost route-button" data-route="#/question-bank/filter/missed" type="button">Missed</button>
@@ -1851,7 +1851,7 @@
       <section class="page-section">
         <h3>Browse by domain</h3>
         <div class="activity-list">${Object.entries(domainCounts).map(([domain, count]) => `<article class="activity-card">
-          <div><p class="objective-label">Domain ${domain}</p><h4>${escapeHTML(domainTitle(Number(domain)))}</h4><p class="domain-meta">${count} CYU questions</p></div>
+          <div><p class="objective-label">Domain ${domain}</p><h4>${escapeHTML(domainTitle(Number(domain)))}</h4><p class="domain-meta">${count} questions</p></div>
           <button class="act route-button" data-route="#/question-bank/domain/${domain}" type="button">Practice</button>
         </article>`).join("")}</div>
       </section>
@@ -1963,7 +1963,7 @@
       <section class="hero-panel">
         <p class="objective-label">Full Simulated Exam</p>
         <h2>${fullExamConfig.questionCount} questions · ${fullExamConfig.timeLimitMinutes} minutes.</h2>
-        <p>Randomized from the Master Study Guide CYU bank using the exam domain weighting. No answer feedback is shown until submission.</p>
+        <p>Randomized from the master question bank using the exam domain weighting. No answer feedback is shown until submission.</p>
         <div class="hero-actions">
           <button class="act" id="startFullExam" type="button">Start new timed exam</button>
           ${latest ? `<button class="act ghost route-button" data-route="#/full-exam/result/${latest.id}" type="button">Review latest result</button>` : ""}
