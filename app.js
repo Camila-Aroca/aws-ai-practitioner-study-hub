@@ -7,6 +7,14 @@
   const activities = data.activities;
   const addendum = data.domain2Addendum || null;
   const reinforcementUnits = window.DOMAIN1_REINFORCEMENT_UNITS || [];
+  const cyuBank = window.CYU_QUESTION_BANK || {questions:[], excluded:[], distractorLengthBalancingAudit:[]};
+  const cyuQuestions = cyuBank.questions || [];
+  const fullExamConfig = {
+    questionCount:65,
+    timeLimitMinutes:90,
+    preparationTarget:80,
+    domainWeights:{1:20, 2:24, 3:28, 4:14, 5:14}
+  };
 
   const els = {
     app: document.getElementById("app"),
@@ -144,6 +152,12 @@
       renderDomain(Number(hash.split("/")[2]));
     }else if(hash.startsWith("#/addendum/domain2")){
       renderDomain2Addendum();
+    }else if(hash.startsWith("#/exam-center")){
+      renderExamCenter();
+    }else if(hash.startsWith("#/question-bank")){
+      renderQuestionBank(hash);
+    }else if(hash.startsWith("#/full-exam")){
+      renderFullExam(hash);
     }else if(hash.startsWith("#/activity/")){
       renderActivity(hash.split("/")[2], hash.split("/")[3]);
     }else{
@@ -182,6 +196,7 @@
       els.sidebar.appendChild(group);
       if(domain.number === 2 && addendum) els.sidebar.appendChild(makeAddendumSidebar());
     });
+    els.sidebar.appendChild(navLink("#/exam-center", "Exam Center"));
     wireSidebarToggles();
   }
 
@@ -394,6 +409,23 @@
       <section class="page-section">
         <h2>Domains</h2>
         <div class="domain-grid">${data.domains.map(domainCard).join("")}</div>
+      </section>
+      <section class="page-section">
+        <h2>Final Exam Center</h2>
+        <div class="domain-grid">
+          <article class="domain-card">
+            <p class="objective-label">Question Bank</p>
+            <h3>Master Study Guide CYU Bank</h3>
+            <p>Review all ${cyuQuestions.length} extracted Check Your Understanding questions by domain, objective, type, missed status, or unseen status.</p>
+            <button class="act ghost route-button" data-route="#/question-bank" type="button">Open question bank</button>
+          </article>
+          <article class="domain-card">
+            <p class="objective-label">Full simulation</p>
+            <h3>65-question timed exam</h3>
+            <p>Start a randomized 90-minute attempt sampled from the same CYU question bank with official domain weighting.</p>
+            <button class="act ghost route-button" data-route="#/full-exam" type="button">Open simulated exam</button>
+          </article>
+        </div>
       </section>
       <section class="two-col">
         <div class="page-section">
@@ -1722,6 +1754,778 @@
     const correct = question.correctAnswers.slice().sort();
     const value = (selected || []).slice().sort();
     return value.length === correct.length && value.every((id, idx) => id === correct[idx]);
+  }
+
+  function examCenterProgress(){
+    progress.examCenter = progress.examCenter || {};
+    progress.examCenter.questionHistory = progress.examCenter.questionHistory || {};
+    progress.examCenter.questionBank = progress.examCenter.questionBank || null;
+    progress.examCenter.fullExam = progress.examCenter.fullExam || {attempts:[], activeAttempt:null, lastResult:null};
+    return progress.examCenter;
+  }
+
+  function renderExamCenter(){
+    if(examTimerId) clearInterval(examTimerId);
+    activeActivity = null;
+    const domainCounts = cyuDomainCounts();
+    const typeCounts = cyuTypeCounts();
+    const ec = examCenterProgress();
+    const latest = ec.fullExam.lastResult || (ec.fullExam.attempts || [])[0];
+    els.app.innerHTML = `
+      <section class="hero-panel">
+        <p class="objective-label">Final Exam Center</p>
+        <h2>Question bank and full simulated exam.</h2>
+        <p>Uses the Check Your Understanding questions extracted from the Master Study Guide. Feedback stays hidden during the full simulation and appears only after submission.</p>
+        <div class="hero-actions">
+          <button class="act route-button" data-route="#/question-bank" type="button">Open question bank</button>
+          <button class="act ghost route-button" data-route="#/full-exam/start" type="button">Start full exam</button>
+        </div>
+      </section>
+      <section class="summary-grid" aria-label="CYU bank summary">
+        <div class="summary-card"><span>Total CYU questions</span><b>${cyuQuestions.length}</b></div>
+        <div class="summary-card"><span>Objectives covered</span><b>${Object.keys(cyuObjectiveCounts()).length}</b></div>
+        <div class="summary-card"><span>Full exam</span><b>${fullExamConfig.questionCount} questions</b></div>
+        <div class="summary-card"><span>Timer</span><b>${fullExamConfig.timeLimitMinutes} minutes</b></div>
+      </section>
+      <section class="page-section">
+        <h3>Domain coverage</h3>
+        <div class="summary-grid">${Object.entries(domainCounts).map(([domain, count]) => `<div class="summary-card"><span>Domain ${domain}</span><b>${count}</b></div>`).join("")}</div>
+      </section>
+      <section class="two-col">
+        <div class="page-section">
+          <h3>Question types</h3>
+          <div class="badge-row">${Object.entries(typeCounts).map(([type, count]) => `<span class="objective-badge">${escapeHTML(cyuTypeLabel(type))} · ${count}</span>`).join("")}</div>
+        </div>
+        <div class="page-section">
+          <h3>Latest simulation</h3>
+          ${latest ? `<p class="domain-meta">${latest.correct} / ${latest.total} correct · ${latest.percent}% · ${escapeHTML(latest.completedAt ? new Date(latest.completedAt).toLocaleString() : "Submitted")}</p>
+          <button class="act ghost route-button" data-route="#/full-exam/result/${latest.id}" type="button">Review results</button>` : `<p class="muted">No full simulated exam attempt yet.</p>`}
+        </div>
+      </section>
+    `;
+    wireRouteButtons();
+  }
+
+  function renderQuestionBank(hash){
+    if(examTimerId) clearInterval(examTimerId);
+    activeActivity = null;
+    const parts = hash.split("/");
+    if(parts.length <= 2 || !parts[2]){
+      renderQuestionBankHome();
+      return;
+    }
+    const mode = parts[2];
+    const value = decodeURIComponent(parts.slice(3).join("/"));
+    const key = mode + ":" + value;
+    const ids = questionBankIds(mode, value);
+    renderQuestionBankSession(key, ids.length ? ids : cyuQuestions.map(question => question.id));
+  }
+
+  function renderQuestionBankHome(){
+    const domainCounts = cyuDomainCounts();
+    const objectiveCounts = cyuObjectiveCounts();
+    const history = examCenterProgress().questionHistory;
+    const missed = cyuQuestions.filter(question => {
+      const row = history[question.id];
+      return row && ((row.incorrectCount || 0) > 0 || (row.unansweredCount || 0) > 0);
+    }).length;
+    const unseen = cyuQuestions.filter(question => !history[question.id] || !history[question.id].lastSeenDate).length;
+    els.app.innerHTML = `
+      <section class="page-section">
+        <p class="objective-label">Question Bank</p>
+        <h2>Master Study Guide CYU Bank</h2>
+        <p class="muted">Practice one question at a time. Feedback includes only sourced answer material extracted from the guide.</p>
+        <div class="hero-actions">
+          <button class="act route-button" data-route="#/question-bank/filter/all" type="button">Review all</button>
+          <button class="act ghost route-button" data-route="#/question-bank/filter/missed" type="button">Missed</button>
+          <button class="act ghost route-button" data-route="#/question-bank/filter/unseen" type="button">Unseen</button>
+          <button class="act ghost route-button" data-route="#/question-bank/filter/mixed" type="button">Mixed 30</button>
+        </div>
+      </section>
+      <section class="summary-grid">
+        <div class="summary-card"><span>Total</span><b>${cyuQuestions.length}</b></div>
+        <div class="summary-card"><span>Missed or unanswered</span><b>${missed}</b></div>
+        <div class="summary-card"><span>Unseen</span><b>${unseen}</b></div>
+        <div class="summary-card"><span>Excluded</span><b>${(cyuBank.excluded || []).length}</b></div>
+      </section>
+      <section class="page-section">
+        <h3>Browse by domain</h3>
+        <div class="activity-list">${Object.entries(domainCounts).map(([domain, count]) => `<article class="activity-card">
+          <div><p class="objective-label">Domain ${domain}</p><h4>${escapeHTML(domainTitle(Number(domain)))}</h4><p class="domain-meta">${count} CYU questions</p></div>
+          <button class="act route-button" data-route="#/question-bank/domain/${domain}" type="button">Practice</button>
+        </article>`).join("")}</div>
+      </section>
+      <section class="page-section">
+        <h3>Browse by objective</h3>
+        <div class="activity-list">${Object.entries(objectiveCounts).map(([objective, count]) => `<article class="activity-card">
+          <div><p class="objective-label">${escapeHTML(objective)}</p><h4>${escapeHTML(objectiveTitle(objective))}</h4><p class="domain-meta">${count} question${count === 1 ? "" : "s"}</p></div>
+          <button class="act ghost route-button" data-route="#/question-bank/objective/${encodeURIComponent(objective)}" type="button">Practice</button>
+        </article>`).join("")}</div>
+      </section>
+    `;
+    wireRouteButtons();
+  }
+
+  function renderQuestionBankSession(key, questionIds){
+    const ec = examCenterProgress();
+    if(!ec.questionBank || ec.questionBank.key !== key){
+      ec.questionBank = {key, questionIds:questionIds.slice(), currentIndex:0, answers:{}, checked:{}, viewed:{}};
+      saveProgress();
+    }
+    const session = ec.questionBank;
+    const index = Math.max(0, Math.min(session.currentIndex || 0, session.questionIds.length - 1));
+    session.currentIndex = index;
+    const question = cyuQuestionById(session.questionIds[index]);
+    if(!question){ renderQuestionBankHome(); return; }
+    recordCyuView(question.id, "bank", session.viewed);
+    const answer = session.answers[question.id];
+    const wasChecked = !!session.checked[question.id];
+    els.app.innerHTML = `
+      <section class="page-section">
+        <div class="exam-head">
+          <div>
+            <p class="objective-label">Question Bank · ${index + 1} / ${session.questionIds.length}</p>
+            <h2>${escapeHTML(question.objective)} · ${escapeHTML(objectiveTitle(question.objective))}</h2>
+            <p class="domain-meta">Domain ${question.domain} · ${escapeHTML(cyuTypeLabel(question.type))} · ${escapeHTML(question.source || "Master Study Guide CYU")}</p>
+          </div>
+          <button class="act ghost route-button" data-route="#/question-bank" type="button">Bank home</button>
+        </div>
+      </section>
+      <section class="page-section">
+        ${renderCyuQuestionForm(question, answer, "qb", false, null)}
+        <div class="hero-actions">
+          <button class="act" id="checkBankAnswer" type="button">${wasChecked ? "Update check" : "Check answer"}</button>
+          <button class="act ghost" id="prevBankQuestion" type="button" ${index === 0 ? "disabled" : ""}>Previous</button>
+          <button class="act ghost" id="nextBankQuestion" type="button" ${index === session.questionIds.length - 1 ? "disabled" : ""}>Next</button>
+        </div>
+        ${wasChecked ? renderCyuFeedback(question, answer, isCyuCorrect(question, answer)) : ""}
+      </section>
+    `;
+    wireCyuAnswerInputs(question, answer, "qb", value => {
+      session.answers[question.id] = value;
+      saveProgress();
+    });
+    document.getElementById("checkBankAnswer").addEventListener("click", () => {
+      session.answers[question.id] = readCyuAnswer(question, "qb");
+      if(!session.checked[question.id]) recordCyuResult(question.id, session.answers[question.id], isCyuCorrect(question, session.answers[question.id]));
+      session.checked[question.id] = true;
+      saveProgress();
+      renderQuestionBankSession(key, session.questionIds);
+    });
+    document.getElementById("prevBankQuestion").addEventListener("click", () => {
+      session.currentIndex = Math.max(0, index - 1);
+      saveProgress();
+      renderQuestionBankSession(key, session.questionIds);
+    });
+    document.getElementById("nextBankQuestion").addEventListener("click", () => {
+      session.currentIndex = Math.min(session.questionIds.length - 1, index + 1);
+      saveProgress();
+      renderQuestionBankSession(key, session.questionIds);
+    });
+    wireRouteButtons();
+  }
+
+  function renderFullExam(hash){
+    const ec = examCenterProgress();
+    const full = ec.fullExam;
+    const parts = hash.split("/");
+    if(parts[2] === "start"){
+      renderFullExamStart();
+      return;
+    }
+    if(parts[2] === "result" && parts[3]){
+      const result = (full.attempts || []).find(item => item.id === parts[3]) || full.lastResult;
+      if(result) renderFullExamResults(result);
+      else renderFullExamStart();
+      return;
+    }
+    if(full.activeAttempt && !full.activeAttempt.submitted){
+      const remaining = full.activeAttempt.expiresAt - Date.now();
+      if(remaining <= 0){
+        submitFullExam(true);
+      }else{
+        renderFullExamQuestion();
+      }
+      return;
+    }
+    if(full.lastResult){
+      renderFullExamResults(full.lastResult);
+      return;
+    }
+    renderFullExamStart();
+  }
+
+  function renderFullExamStart(){
+    if(examTimerId) clearInterval(examTimerId);
+    const ec = examCenterProgress();
+    const latest = ec.fullExam.lastResult;
+    els.app.innerHTML = `
+      <section class="hero-panel">
+        <p class="objective-label">Full Simulated Exam</p>
+        <h2>${fullExamConfig.questionCount} questions · ${fullExamConfig.timeLimitMinutes} minutes.</h2>
+        <p>Randomized from the Master Study Guide CYU bank using the exam domain weighting. No answer feedback is shown until submission.</p>
+        <div class="hero-actions">
+          <button class="act" id="startFullExam" type="button">Start new timed exam</button>
+          ${latest ? `<button class="act ghost route-button" data-route="#/full-exam/result/${latest.id}" type="button">Review latest result</button>` : ""}
+        </div>
+      </section>
+      <section class="page-section">
+        <h3>Sampling plan</h3>
+        <div class="summary-grid">${fullExamAllocation().map(row => `<div class="summary-card"><span>Domain ${row.domain}</span><b>${row.count} questions</b></div>`).join("")}</div>
+      </section>
+      <section class="page-section">
+        <p class="source-note">This simulator is a readiness tool. It reports percent correct and objective diagnostics, not an official scaled AWS score.</p>
+      </section>
+    `;
+    document.getElementById("startFullExam").addEventListener("click", () => {
+      ec.fullExam.activeAttempt = buildFullExamAttempt();
+      ec.fullExam.lastResult = null;
+      saveProgress();
+      renderFullExamQuestion();
+    });
+    wireRouteButtons();
+  }
+
+  function renderFullExamQuestion(){
+    const full = examCenterProgress().fullExam;
+    const attempt = full.activeAttempt;
+    if(!attempt){ renderFullExamStart(); return; }
+    const index = Math.max(0, Math.min(attempt.currentIndex || 0, attempt.questionIds.length - 1));
+    attempt.currentIndex = index;
+    const question = cyuQuestionById(attempt.questionIds[index]);
+    if(!question){ renderFullExamStart(); return; }
+    const answer = attempt.answers[question.id];
+    els.app.innerHTML = `
+      <section class="page-section">
+        <div class="exam-head">
+          <div>
+            <p class="objective-label">Full Simulated Exam · Question ${index + 1} / ${attempt.questionIds.length}</p>
+            <h2>Timed exam attempt</h2>
+            <p class="domain-meta">No feedback is shown until submission.</p>
+          </div>
+          <div class="exam-timer" id="fullExamTimer" aria-live="polite"></div>
+        </div>
+        <div class="exam-progress">${attempt.questionIds.map((id, idx) => fullExamNavButton(attempt, id, idx)).join("")}</div>
+      </section>
+      <section class="page-section">
+        ${renderCyuQuestionForm(question, answer, "full", true, attempt)}
+        <div class="hero-actions">
+          <button class="act ghost" id="prevFullQuestion" type="button" ${index === 0 ? "disabled" : ""}>Previous</button>
+          <button class="act ghost" id="flagFullQuestion" type="button">${attempt.flagged[question.id] ? "Unflag" : "Flag"}</button>
+          <button class="act ghost" id="nextFullQuestion" type="button" ${index === attempt.questionIds.length - 1 ? "disabled" : ""}>Next</button>
+          <button class="act" id="finishFullExam" type="button">Finish exam</button>
+        </div>
+      </section>
+    `;
+    updateFullExamTimer();
+    if(examTimerId) clearInterval(examTimerId);
+    examTimerId = setInterval(updateFullExamTimer, 1000);
+    wireCyuAnswerInputs(question, answer, "full", value => {
+      attempt.answers[question.id] = value;
+      saveProgress();
+      updateFullExamNav();
+    });
+    document.querySelectorAll(".question-jump").forEach(button => {
+      button.addEventListener("click", () => {
+        attempt.answers[question.id] = readCyuAnswer(question, "full");
+        attempt.currentIndex = Number(button.dataset.index);
+        saveProgress();
+        renderFullExamQuestion();
+      });
+    });
+    document.getElementById("prevFullQuestion").addEventListener("click", () => moveFullExam(-1));
+    document.getElementById("nextFullQuestion").addEventListener("click", () => moveFullExam(1));
+    document.getElementById("flagFullQuestion").addEventListener("click", () => {
+      attempt.flagged[question.id] = !attempt.flagged[question.id];
+      saveProgress();
+      renderFullExamQuestion();
+    });
+    document.getElementById("finishFullExam").addEventListener("click", () => {
+      attempt.answers[question.id] = readCyuAnswer(question, "full");
+      saveProgress();
+      const answered = attempt.questionIds.filter(id => isCyuAnswered(cyuQuestionById(id), attempt.answers[id])).length;
+      if(confirm("Submit this exam now? " + answered + " of " + attempt.questionIds.length + " questions are answered.")) submitFullExam(false);
+    });
+  }
+
+  function renderFullExamResults(result){
+    if(examTimerId) clearInterval(examTimerId);
+    const weakObjectives = result.byObjective.filter(row => row.total && row.percent < fullExamConfig.preparationTarget);
+    els.app.innerHTML = `
+      <section class="hero-panel">
+        <p class="objective-label">Full Exam Result</p>
+        <h2>${result.correct} / ${result.total} correct · ${result.percent}%</h2>
+        <p>${result.automaticSubmit ? "Time expired and the attempt was submitted automatically." : "Attempt submitted."} Target readiness band: ${fullExamConfig.preparationTarget}% or higher.</p>
+        <div class="hero-actions">
+          <button class="act route-button" data-route="#/full-exam/start" type="button">Start another exam</button>
+          <button class="act ghost route-button" data-route="#/question-bank/filter/missed" type="button">Practice missed</button>
+        </div>
+      </section>
+      <section class="summary-grid">
+        <div class="summary-card"><span>Correct</span><b>${result.correct}</b></div>
+        <div class="summary-card"><span>Incorrect</span><b>${result.incorrect}</b></div>
+        <div class="summary-card"><span>Unanswered</span><b>${result.unanswered}</b></div>
+        <div class="summary-card"><span>Time used</span><b>${formatDuration(result.timeUsedMs)}</b></div>
+      </section>
+      <section class="page-section">
+        <h3>Domain diagnostics</h3>
+        <div class="activity-list">${result.byDomain.map(row => diagnosticCard("Domain " + row.domain, domainTitle(row.domain), row)).join("")}</div>
+      </section>
+      <section class="page-section">
+        <h3>Objective remediation</h3>
+        ${weakObjectives.length ? `<div class="activity-list">${weakObjectives.map(row => remediationCard(row)).join("")}</div>` : `<p class="muted">No objective fell below the ${fullExamConfig.preparationTarget}% readiness target.</p>`}
+      </section>
+      <section class="page-section">
+        <h3>Cross-domain patterns</h3>
+        ${renderPatternDiagnostics(result)}
+      </section>
+      <section class="page-section">
+        <h3>Review every question</h3>
+        <div class="review-list">${result.review.map((item, idx) => renderExamReviewItem(item, idx)).join("")}</div>
+      </section>
+    `;
+    wireRouteButtons();
+  }
+
+  function questionBankIds(mode, value){
+    if(mode === "domain") return cyuQuestions.filter(question => String(question.domain) === String(value)).map(question => question.id);
+    if(mode === "objective") return cyuQuestions.filter(question => question.objective === value).map(question => question.id);
+    if(mode === "filter"){
+      const history = examCenterProgress().questionHistory;
+      if(value === "missed") return cyuQuestions.filter(question => {
+        const row = history[question.id];
+        return row && ((row.incorrectCount || 0) > 0 || (row.unansweredCount || 0) > 0);
+      }).map(question => question.id);
+      if(value === "unseen") return cyuQuestions.filter(question => !history[question.id] || !history[question.id].lastSeenDate).map(question => question.id);
+      if(value === "mixed") return shuffle(cyuQuestions.map(question => question.id)).slice(0, 30);
+    }
+    return cyuQuestions.map(question => question.id);
+  }
+
+  function cyuDomainCounts(){
+    return cyuQuestions.reduce((counts, question) => {
+      counts[question.domain] = (counts[question.domain] || 0) + 1;
+      return counts;
+    }, {});
+  }
+
+  function cyuObjectiveCounts(){
+    return cyuQuestions.reduce((counts, question) => {
+      counts[question.objective] = (counts[question.objective] || 0) + 1;
+      return counts;
+    }, {});
+  }
+
+  function cyuTypeCounts(){
+    return cyuQuestions.reduce((counts, question) => {
+      counts[question.type] = (counts[question.type] || 0) + 1;
+      return counts;
+    }, {});
+  }
+
+  function cyuQuestionById(id){
+    return cyuQuestions.find(question => question.id === id);
+  }
+
+  function domainTitle(domain){
+    const match = data.domains.find(item => item.number === Number(domain));
+    return match ? match.title : "Domain " + domain;
+  }
+
+  function objectiveTitle(objective){
+    const hierarchy = data.guideHierarchy && data.guideHierarchy.subtaskTitles;
+    return hierarchy && hierarchy[objective] ? hierarchy[objective] : "Objective " + objective;
+  }
+
+  function cyuTypeLabel(type){
+    return type === "multiple-choice" ? "Multiple choice" : type === "multiple-response" ? "Multiple response" : type === "ordering" ? "Ordering" : type === "matching" ? "Matching" : type;
+  }
+
+  function renderCyuQuestionForm(question, answer, prefix, activeExam, attempt){
+    const text = question.stemHtml || escapeHTML(question.stem || "");
+    return `<div class="exam-question" data-question-id="${escapeHTML(question.id)}">
+      <p class="objective-label">${activeExam ? "Question" : escapeHTML(cyuTypeLabel(question.type))}</p>
+      <h3>${text}</h3>
+      ${question.type === "ordering" ? renderCyuOrdering(question, answer, prefix, activeExam, attempt) : question.type === "matching" ? renderCyuMatching(question, answer, prefix, activeExam, attempt) : renderCyuOptions(question, answer, prefix, activeExam, attempt)}
+    </div>`;
+  }
+
+  function renderCyuOptions(question, answer, prefix, activeExam, attempt){
+    const selected = Array.isArray(answer) ? answer : [];
+    const ids = activeExam && attempt && attempt.optionOrders[question.id] ? attempt.optionOrders[question.id] : question.options.map(option => option.id);
+    const type = question.type === "multiple-response" ? "checkbox" : "radio";
+    const name = prefix + "-" + question.id;
+    return `<div class="option-stack" role="group" aria-label="Answer options">
+      ${question.type === "multiple-response" ? `<p class="domain-meta">Select all that apply.</p>` : ""}
+      ${ids.map(id => {
+        const option = question.options.find(item => item.id === id);
+        if(!option) return "";
+        return `<label class="option-row"><input type="${type}" name="${escapeHTML(name)}" value="${escapeHTML(option.id)}" ${selected.includes(option.id) ? "checked" : ""}> <span>${escapeHTML(option.id.toUpperCase())}. ${escapeHTML(option.text)}</span></label>`;
+      }).join("")}
+    </div>`;
+  }
+
+  function renderCyuOrdering(question, answer, prefix, activeExam, attempt){
+    const chosen = Array.isArray(answer) ? answer : [];
+    const items = activeExam && attempt && attempt.itemOrders[question.id] ? attempt.itemOrders[question.id] : shuffle((question.items || question.orderItems || question.correctOrder || []).slice());
+    return `<div class="match-list">${(question.correctOrder || []).map((_, idx) => `<label class="match-row"><span>Position ${idx + 1}</span><select data-cyu-order="${idx}" id="${escapeHTML(prefix)}-order-${idx}">
+      <option value="">Choose item</option>
+      ${items.map(item => `<option value="${escapeHTML(item)}" ${chosen[idx] === item ? "selected" : ""}>${escapeHTML(item)}</option>`).join("")}
+    </select></label>`).join("")}</div>`;
+  }
+
+  function renderCyuMatching(question, answer, prefix, activeExam, attempt){
+    const selected = answer && !Array.isArray(answer) ? answer : {};
+    const options = activeExam && attempt && attempt.matchingOptionOrders[question.id] ? attempt.matchingOptionOrders[question.id] : shuffle((question.matchingOptions || []).slice());
+    return `<div class="match-list">${(question.matchingPrompts || []).map((prompt, idx) => `<label class="match-row"><span>${escapeHTML(prompt)}</span><select data-cyu-match="${idx}" data-prompt="${escapeHTML(prompt)}" id="${escapeHTML(prefix)}-match-${idx}">
+      <option value="">Choose match</option>
+      ${options.map(option => `<option value="${escapeHTML(option)}" ${selected[prompt] === option ? "selected" : ""}>${escapeHTML(option)}</option>`).join("")}
+    </select></label>`).join("")}</div>`;
+  }
+
+  function wireCyuAnswerInputs(question, answer, prefix, onChange){
+    document.querySelectorAll(".exam-question input, .exam-question select").forEach(input => {
+      input.addEventListener("change", () => onChange(readCyuAnswer(question, prefix)));
+    });
+  }
+
+  function readCyuAnswer(question, prefix){
+    if(question.type === "ordering"){
+      return Array.from(document.querySelectorAll("[data-cyu-order]")).sort((a,b) => Number(a.dataset.cyuOrder) - Number(b.dataset.cyuOrder)).map(input => input.value).filter(Boolean);
+    }
+    if(question.type === "matching"){
+      return Array.from(document.querySelectorAll("[data-cyu-match]")).reduce((answer, input) => {
+        if(input.value) answer[input.dataset.prompt] = input.value;
+        return answer;
+      }, {});
+    }
+    return Array.from(document.querySelectorAll("input[name='" + CSS.escape(prefix + "-" + question.id) + "']:checked")).map(input => input.value);
+  }
+
+  function isCyuAnswered(question, answer){
+    if(!question) return false;
+    if(question.type === "matching") return answer && Object.keys(answer).length === (question.matchingPrompts || []).length;
+    if(question.type === "ordering") return Array.isArray(answer) && answer.length === (question.correctOrder || []).length;
+    return Array.isArray(answer) && answer.length > 0;
+  }
+
+  function isCyuCorrect(question, answer){
+    if(!isCyuAnswered(question, answer)) return false;
+    if(question.type === "matching"){
+      return cyuMatches(question).every(match => answer[match.prompt] === match.answer);
+    }
+    if(question.type === "ordering"){
+      const correct = question.correctOrder || [];
+      return Array.isArray(answer) && answer.length === correct.length && answer.every((item, idx) => item === correct[idx]);
+    }
+    const selected = (answer || []).slice().sort();
+    const correct = (question.correctAnswers || []).slice().sort();
+    return selected.length === correct.length && selected.every((id, idx) => id === correct[idx]);
+  }
+
+  function cyuMatches(question){
+    return question.correctMatches || question.matches || [];
+  }
+
+  function cyuIncorrectExplanations(question){
+    if(Array.isArray(question.incorrectExplanations)) return question.incorrectExplanations;
+    return Object.entries(question.incorrectOptionExplanations || {}).map(([id, text]) => id.toUpperCase() + ". " + text);
+  }
+
+  function renderCyuFeedback(question, answer, correct){
+    return `<div class="${correct ? "feedback correct" : "feedback incorrect"}">
+      <h4>${correct ? "Correct" : "Review this one"}</h4>
+      <p><strong>Correct answer:</strong> ${escapeHTML(cyuCorrectText(question))}</p>
+      ${question.explanation ? `<p>${escapeHTML(question.explanation)}</p>` : ""}
+      ${cyuIncorrectExplanations(question).length ? `<ul>${cyuIncorrectExplanations(question).map(item => `<li>${escapeHTML(item)}</li>`).join("")}</ul>` : ""}
+      ${question.takeaway ? `<p><strong>Takeaway:</strong> ${escapeHTML(question.takeaway)}</p>` : ""}
+      ${question.sequenceLogic ? `<p><strong>Sequence logic:</strong> ${escapeHTML(question.sequenceLogic)}</p>` : ""}
+      ${question.decisiveDetail ? `<p><strong>Decisive detail:</strong> ${escapeHTML(question.decisiveDetail)}</p>` : ""}
+      <p class="source-note">${escapeHTML(question.source || "Master Study Guide CYU")} · ${escapeHTML(question.objective)} · ${escapeHTML(cyuTypeLabel(question.type))}</p>
+    </div>`;
+  }
+
+  function cyuCorrectText(question){
+    if(question.type === "matching") return cyuMatches(question).map(match => match.prompt + " -> " + match.answer).join("; ");
+    if(question.type === "ordering") return (question.correctOrder || []).map((item, idx) => (idx + 1) + ". " + item).join("; ");
+    return (question.correctAnswers || []).map(id => {
+      const option = (question.options || []).find(item => item.id === id);
+      return option ? id.toUpperCase() + ". " + option.text : id.toUpperCase();
+    }).join("; ");
+  }
+
+  function cyuAnswerText(question, answer){
+    if(!isCyuAnswered(question, answer)) return "Unanswered";
+    if(question.type === "matching") return Object.entries(answer).map(([prompt, value]) => prompt + " -> " + value).join("; ");
+    if(question.type === "ordering") return answer.map((item, idx) => (idx + 1) + ". " + item).join("; ");
+    return answer.map(id => {
+      const option = (question.options || []).find(item => item.id === id);
+      return option ? id.toUpperCase() + ". " + option.text : id.toUpperCase();
+    }).join("; ");
+  }
+
+  function recordCyuView(questionId, mode, viewedMap){
+    viewedMap = viewedMap || {};
+    if(viewedMap[questionId]) return;
+    const history = examCenterProgress().questionHistory;
+    history[questionId] = history[questionId] || {bankViews:0, examAppearances:0, correctCount:0, incorrectCount:0, unansweredCount:0, lastSeenDate:null};
+    if(mode === "exam") history[questionId].examAppearances++;
+    else history[questionId].bankViews++;
+    history[questionId].lastSeenDate = new Date().toISOString();
+    viewedMap[questionId] = true;
+    saveProgress();
+  }
+
+  function recordCyuResult(questionId, answer, correct){
+    const history = examCenterProgress().questionHistory;
+    history[questionId] = history[questionId] || {bankViews:0, examAppearances:0, correctCount:0, incorrectCount:0, unansweredCount:0, lastSeenDate:null};
+    if(!isCyuAnswered(cyuQuestionById(questionId), answer)) history[questionId].unansweredCount++;
+    else if(correct) history[questionId].correctCount++;
+    else history[questionId].incorrectCount++;
+    history[questionId].lastSeenDate = new Date().toISOString();
+  }
+
+  function fullExamAllocation(){
+    const byDomain = cyuDomainCounts();
+    const raw = Object.entries(fullExamConfig.domainWeights).map(([domain, weight]) => {
+      const exact = fullExamConfig.questionCount * weight / 100;
+      return {domain:Number(domain), exact, count:Math.floor(exact), capacity:byDomain[domain] || 0};
+    });
+    let remaining = fullExamConfig.questionCount - raw.reduce((sum, row) => sum + row.count, 0);
+    raw.sort((a,b) => (b.exact - Math.floor(b.exact)) - (a.exact - Math.floor(a.exact))).forEach(row => {
+      if(remaining > 0 && row.count < row.capacity){ row.count++; remaining--; }
+    });
+    while(remaining > 0){
+      const row = raw.find(item => item.count < item.capacity);
+      if(!row) break;
+      row.count++;
+      remaining--;
+    }
+    raw.forEach(row => {
+      if(row.count > row.capacity){
+        remaining += row.count - row.capacity;
+        row.count = row.capacity;
+      }
+    });
+    while(remaining > 0){
+      const row = raw.find(item => item.count < item.capacity);
+      if(!row) break;
+      row.count++;
+      remaining--;
+    }
+    return raw.sort((a,b) => a.domain - b.domain);
+  }
+
+  function buildFullExamAttempt(){
+    const allocation = fullExamAllocation();
+    const ids = allocation.flatMap(row => shuffle(cyuQuestions.filter(question => question.domain === row.domain).map(question => question.id)).slice(0, row.count));
+    const questionIds = shuffle(ids).slice(0, fullExamConfig.questionCount);
+    const optionOrders = {};
+    const itemOrders = {};
+    const matchingOptionOrders = {};
+    questionIds.forEach(id => {
+      const question = cyuQuestionById(id);
+      if(question.type === "ordering") itemOrders[id] = shuffle((question.items || question.orderItems || question.correctOrder || []).slice());
+      else if(question.type === "matching") matchingOptionOrders[id] = shuffle((question.matchingOptions || []).slice());
+      else optionOrders[id] = shuffle((question.options || []).map(option => option.id));
+    });
+    const startedAt = Date.now();
+    return {
+      id:"full-exam-" + startedAt,
+      startedAt,
+      expiresAt:startedAt + fullExamConfig.timeLimitMinutes * 60 * 1000,
+      submitted:false,
+      currentIndex:0,
+      questionIds,
+      optionOrders,
+      itemOrders,
+      matchingOptionOrders,
+      answers:{},
+      flagged:{},
+      viewed:{}
+    };
+  }
+
+  function moveFullExam(delta){
+    const attempt = examCenterProgress().fullExam.activeAttempt;
+    const question = cyuQuestionById(attempt.questionIds[attempt.currentIndex]);
+    attempt.answers[question.id] = readCyuAnswer(question, "full");
+    attempt.currentIndex = Math.max(0, Math.min(attempt.questionIds.length - 1, attempt.currentIndex + delta));
+    saveProgress();
+    renderFullExamQuestion();
+  }
+
+  function updateFullExamTimer(){
+    const attempt = examCenterProgress().fullExam.activeAttempt;
+    const timer = document.getElementById("fullExamTimer");
+    if(!attempt || !timer) return;
+    const remaining = Math.max(0, attempt.expiresAt - Date.now());
+    timer.textContent = "Remaining " + formatDuration(remaining);
+    timer.classList.toggle("is-warning", remaining <= 10 * 60 * 1000);
+    timer.classList.toggle("is-danger", remaining <= 5 * 60 * 1000);
+    if(remaining <= 0) submitFullExam(true);
+  }
+
+  function updateFullExamNav(){
+    const attempt = examCenterProgress().fullExam.activeAttempt;
+    const nav = document.querySelector(".exam-progress");
+    if(nav) nav.innerHTML = attempt.questionIds.map((id, idx) => fullExamNavButton(attempt, id, idx)).join("");
+  }
+
+  function fullExamNavButton(attempt, id, index){
+    const classes = ["question-jump"];
+    if(index === attempt.currentIndex) classes.push("is-current");
+    if(isCyuAnswered(cyuQuestionById(id), attempt.answers[id])) classes.push("is-answered");
+    if(attempt.flagged[id]) classes.push("is-flagged");
+    return `<button class="${classes.join(" ")}" type="button" data-index="${index}" aria-label="Question ${index + 1}">${index + 1}</button>`;
+  }
+
+  function submitFullExam(automatic){
+    const full = examCenterProgress().fullExam;
+    const attempt = full.activeAttempt;
+    if(!attempt) return;
+    if(examTimerId) clearInterval(examTimerId);
+    attempt.submitted = true;
+    attempt.completedAt = Date.now();
+    attempt.automaticSubmit = !!automatic;
+    const result = scoreFullExamAttempt(attempt);
+    full.activeAttempt = null;
+    full.lastResult = result;
+    full.attempts = [result].concat(full.attempts || []).slice(0, 10);
+    saveProgress();
+    renderFullExamResults(result);
+  }
+
+  function scoreFullExamAttempt(attempt){
+    const byDomain = {};
+    const byObjective = {};
+    const review = attempt.questionIds.map(id => {
+      const question = cyuQuestionById(id);
+      const answer = attempt.answers[id];
+      const answered = isCyuAnswered(question, answer);
+      const correct = answered && isCyuCorrect(question, answer);
+      recordCyuView(id, "exam", attempt.viewed || {});
+      recordCyuResult(id, answer, correct);
+      byDomain[question.domain] = byDomain[question.domain] || {domain:question.domain, correct:0, incorrect:0, unanswered:0, total:0};
+      byObjective[question.objective] = byObjective[question.objective] || {objective:question.objective, title:objectiveTitle(question.objective), correct:0, incorrect:0, unanswered:0, total:0};
+      [byDomain[question.domain], byObjective[question.objective]].forEach(row => {
+        row.total++;
+        if(!answered) row.unanswered++;
+        else if(correct) row.correct++;
+        else row.incorrect++;
+      });
+      return {questionId:id, answer, answered, correct, flagged:!!attempt.flagged[id]};
+    });
+    const correct = review.filter(item => item.correct).length;
+    const unanswered = review.filter(item => !item.answered).length;
+    const incorrect = review.length - correct - unanswered;
+    const byObjectiveRows = Object.values(byObjective).map(row => Object.assign(row, {percent:percent(row), topic:topicForObjective(row.objective)})).sort((a,b) => a.objective.localeCompare(b.objective, undefined, {numeric:true}));
+    return {
+      id:attempt.id,
+      startedAt:new Date(attempt.startedAt).toISOString(),
+      completedAt:new Date(attempt.completedAt).toISOString(),
+      automaticSubmit:attempt.automaticSubmit,
+      total:review.length,
+      correct,
+      incorrect,
+      unanswered,
+      percent:Math.round(correct / review.length * 100),
+      timeUsedMs:Math.min(attempt.completedAt - attempt.startedAt, fullExamConfig.timeLimitMinutes * 60 * 1000),
+      questionIds:attempt.questionIds.slice(),
+      optionOrders:attempt.optionOrders,
+      itemOrders:attempt.itemOrders,
+      matchingOptionOrders:attempt.matchingOptionOrders,
+      answers:attempt.answers,
+      flagged:attempt.flagged,
+      byDomain:Object.values(byDomain).map(row => Object.assign(row, {percent:percent(row)})).sort((a,b) => a.domain - b.domain),
+      byObjective:byObjectiveRows,
+      patterns:patternDiagnostics(byObjectiveRows),
+      review
+    };
+  }
+
+  function diagnosticCard(label, title, row){
+    return `<article class="activity-card">
+      <div><p class="objective-label">${escapeHTML(label)}</p><h4>${escapeHTML(title)}</h4><p class="domain-meta">${row.correct}/${row.total} correct · ${row.incorrect} incorrect · ${row.unanswered} unanswered</p></div>
+      <span class="status-pill">${row.percent}%</span>
+    </article>`;
+  }
+
+  function remediationCard(row){
+    const routes = remediationRoutes(row.objective);
+    return `<article class="activity-card">
+      <div>
+        <p class="objective-label">${escapeHTML(row.objective)} · ${escapeHTML(performanceLabel(row.percent))}</p>
+        <h4>${escapeHTML(row.title)}</h4>
+        <p class="domain-meta">${row.correct}/${row.total} correct · Study: Master Study Guide §${escapeHTML(row.objective)}</p>
+        ${routes.length ? `<div class="badge-row">${routes.map(route => `<button class="link-button route-button" data-route="${route.route}" type="button">${escapeHTML(route.label)}</button>`).join("")}</div>` : ""}
+      </div>
+      <span class="status-pill">${row.percent}%</span>
+    </article>`;
+  }
+
+  function remediationRoutes(objective){
+    const routes = [];
+    activities.forEach(activity => {
+      (activity.rounds || []).forEach(round => {
+        const objectives = (round.objectiveCodes || activity.objectiveCodes || []).concat(round.hierarchy && round.hierarchy.subtaskId ? [round.hierarchy.subtaskId] : []);
+        if(objectives.includes(objective)) routes.push({label:round.title || activity.title, route:"#/activity/" + activity.id + "/" + round.id});
+      });
+    });
+    return routes.slice(0, 3);
+  }
+
+  function patternDiagnostics(objectiveRows){
+    const patterns = {};
+    objectiveRows.forEach(row => {
+      const topic = topicForObjective(row.objective);
+      patterns[topic] = patterns[topic] || {topic, total:0, correct:0, incorrect:0, unanswered:0, objectives:[]};
+      patterns[topic].total += row.total;
+      patterns[topic].correct += row.correct;
+      patterns[topic].incorrect += row.incorrect;
+      patterns[topic].unanswered += row.unanswered;
+      patterns[topic].objectives.push(row.objective);
+    });
+    return Object.values(patterns).map(row => Object.assign(row, {percent:percent(row)})).filter(row => row.total > 1 && row.percent < fullExamConfig.preparationTarget).sort((a,b) => a.percent - b.percent);
+  }
+
+  function renderPatternDiagnostics(result){
+    if(!result.patterns || !result.patterns.length) return `<p class="muted">No recurring cross-domain weakness pattern fell below the readiness target.</p>`;
+    return `<div class="activity-list">${result.patterns.map(row => `<article class="activity-card">
+      <div><p class="objective-label">${escapeHTML(performanceLabel(row.percent))}</p><h4>${escapeHTML(row.topic)}</h4><p class="domain-meta">${row.correct}/${row.total} correct · Objectives: ${row.objectives.map(escapeHTML).join(", ")}</p></div>
+      <span class="status-pill">${row.percent}%</span>
+    </article>`).join("")}</div>`;
+  }
+
+  function topicForObjective(objective){
+    if(/^4\./.test(objective)) return "Responsible AI, transparency, and risk controls";
+    if(/^5\./.test(objective)) return "Security, compliance, and governance";
+    if(/^3\.2\./.test(objective)) return "Prompt engineering and prompt operations";
+    if(/^3\.3\./.test(objective)) return "Model customization and cost tradeoffs";
+    if(/^3\.4\./.test(objective) || objective === "1.3.6") return "Metrics and model evaluation";
+    if(["3.1.3","3.1.4","5.1.5","2.1.5"].includes(objective)) return "RAG, embeddings, and vector retrieval";
+    if(["3.1.6","2.1.6"].includes(objective)) return "Agents, assistants, and workflow automation";
+    if(/^1\.3\./.test(objective)) return "ML lifecycle and model behavior";
+    if(/^2\./.test(objective)) return "GenAI concepts and foundation model selection";
+    if(/^1\./.test(objective)) return "AI/ML fundamentals and AWS service selection";
+    return "General exam readiness";
+  }
+
+  function renderExamReviewItem(item, index){
+    const question = cyuQuestionById(item.questionId);
+    const cls = item.correct ? "correct" : item.answered ? "incorrect" : "feedback";
+    return `<details class="review-item">
+      <summary>${index + 1}. ${escapeHTML(question.objective)} · ${item.correct ? "Correct" : item.answered ? "Incorrect" : "Unanswered"}${item.flagged ? " · Flagged" : ""}</summary>
+      <div class="${cls}">
+        <p>${question.stemHtml || escapeHTML(question.stem)}</p>
+        <p><strong>Your answer:</strong> ${escapeHTML(cyuAnswerText(question, item.answer))}</p>
+        <p><strong>Correct answer:</strong> ${escapeHTML(cyuCorrectText(question))}</p>
+        ${question.explanation ? `<p>${escapeHTML(question.explanation)}</p>` : ""}
+        ${cyuIncorrectExplanations(question).length ? `<ul>${cyuIncorrectExplanations(question).map(text => `<li>${escapeHTML(text)}</li>`).join("")}</ul>` : ""}
+        ${question.takeaway ? `<p><strong>Takeaway:</strong> ${escapeHTML(question.takeaway)}</p>` : ""}
+        <p class="source-note">${escapeHTML(question.source || "Master Study Guide CYU")} · Domain ${question.domain} · ${escapeHTML(cyuTypeLabel(question.type))}</p>
+      </div>
+    </details>`;
   }
 
   function examProgress(activityId){
