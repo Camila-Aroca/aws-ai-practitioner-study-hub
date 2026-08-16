@@ -868,15 +868,15 @@
       cardType:"Service matching",
       difficulty:"Intermediate",
       tags:["Security","AWS services"],
-      columns:[{id:"purpose", label:"Purpose"}, {id:"not", label:"What it does not do"}],
+      columns:[{id:"purpose", label:"Purpose"}],
       rows:[
-        {id:"iam", label:"AWS IAM", values:{purpose:"Controls who can access AWS resources and what actions they may take.", not:"It does not encrypt data or filter model outputs."}},
-        {id:"agent-id", label:"AgentCore Identity", values:{purpose:"Gives agents identity and authorization integration.", not:"It does not replace general AWS account IAM design."}},
-        {id:"kms", label:"AWS KMS", values:{purpose:"Creates and manages encryption keys.", not:"It does not store application secrets as values."}},
-        {id:"secrets", label:"AWS Secrets Manager", values:{purpose:"Stores, retrieves, and rotates secrets.", not:"It does not provide network isolation."}},
-        {id:"macie", label:"Amazon Macie", values:{purpose:"Discovers and classifies sensitive data such as PII in S3.", not:"It does not block harmful generated text."}},
-        {id:"privatelink", label:"AWS PrivateLink", values:{purpose:"Provides private connectivity to services without public internet paths.", not:"It does not decide which user may invoke a model."}},
-        {id:"guardrails", label:"Amazon Bedrock Guardrails", values:{purpose:"Applies content, denied-topic, sensitive-data, and grounding controls.", not:"It does not replace IAM authorization."}}
+        {id:"iam", label:"AWS IAM", values:{purpose:"Controls who can access AWS resources and what actions they may take."}},
+        {id:"agent-id", label:"AgentCore Identity", values:{purpose:"Gives agents identity and authorization integration."}},
+        {id:"kms", label:"AWS KMS", values:{purpose:"Creates and manages encryption keys."}},
+        {id:"secrets", label:"AWS Secrets Manager", values:{purpose:"Stores, retrieves, and rotates secrets."}},
+        {id:"macie", label:"Amazon Macie", values:{purpose:"Discovers and classifies sensitive data such as PII in S3."}},
+        {id:"privatelink", label:"AWS PrivateLink", values:{purpose:"Provides private connectivity to services without public internet paths."}},
+        {id:"guardrails", label:"Amazon Bedrock Guardrails", values:{purpose:"Applies content, denied-topic, sensitive-data, and grounding controls."}}
       ]
     }),
     matchRound({
