@@ -936,14 +936,17 @@
       cardType:"Table completion",
       difficulty:"Intermediate",
       tags:["Security","Privacy"],
-      columns:[{id:"angle", label:"Security angle"}, {id:"control", label:"Control"}],
+      columns:[{id:"angle", label:"The AI-specific angle"}, {id:"control", label:"Control"}],
       rows:[
-        {id:"injection", label:"Prompt injection", values:{angle:"User input attempts to override instructions or manipulate tools.", control:"Input validation, tool permission checks, delimiters, and Guardrails."}},
-        {id:"leakage", label:"Data leakage prevention", values:{angle:"Sensitive data appears in prompts, logs, or outputs.", control:"Macie, PII filters, minimization, and logging controls."}},
-        {id:"output", label:"Output filtering and validation", values:{angle:"Generated output is unsafe, malformed, or out of policy.", control:"Guardrails and application validation."}},
-        {id:"audit", label:"Audit trail and logging", values:{angle:"Teams need evidence of actions and operations.", control:"CloudTrail, CloudWatch, Bedrock invocation logging, and AgentCore Observability."}},
-        {id:"vuln", label:"Threat and vulnerability management", values:{angle:"Application or infrastructure weaknesses need detection.", control:"Inspector and security monitoring."}},
-        {id:"network", label:"Infrastructure protection", values:{angle:"Traffic should avoid public internet exposure where required.", control:"PrivateLink and VPC design."}}
+        {id:"injection", label:"Prompt injection", values:{angle:"Instructions hidden in user input or retrieved content override the intended instructions.", control:"Delimit instructions from data, validate input, apply Guardrails, restrict agent tool access, never rely on prompt text for authorisation."}},
+        {id:"leakage", label:"Data leakage prevention", values:{angle:"Sensitive data enters a prompt or leaves in a completion, or appears in logs.", control:"PII detection and redaction with Guardrails or Amazon Comprehend, output filtering, careful log configuration, least-privilege retrieval."}},
+        {id:"output", label:"Output filtering and validation", values:{angle:"The model produces content that is harmful, off-policy, or structurally invalid.", control:"Guardrails on the output path, schema validation of structured output, grounding checks."}},
+        {id:"audit", label:"Audit trail and logging for AI interactions", values:{angle:"You must be able to reconstruct who asked what, which model answered, and what it said.", control:"AWS CloudTrail for API activity, Amazon CloudWatch for logs and metrics, Bedrock model invocation logging, AgentCore Observability for agent traces."}},
+        {id:"toxicity", label:"Toxicity", values:{angle:"Harmful, abusive or offensive content in input or output.", control:"Guardrails content filters, Amazon Comprehend toxicity detection, human review."}},
+        {id:"appsec", label:"Application security", values:{angle:"The application around the model is still ordinary software with ordinary vulnerabilities.", control:"Standard secure development practice; Amazon Inspector for vulnerability scanning."}},
+        {id:"vuln", label:"Threat detection and vulnerability management", values:{angle:"Detecting compromise and unpatched components.", control:"Amazon Inspector for vulnerabilities. Note that Amazon GuardDuty is out of scope for this exam."}},
+        {id:"network", label:"Infrastructure protection", values:{angle:"Network isolation of the workload.", control:"Amazon VPC, security groups, AWS PrivateLink."}},
+        {id:"encryption", label:"Encryption at rest and in transit", values:{angle:"Protecting stored and moving data.", control:"AWS KMS and TLS."}}
       ]
     }),
     sequenceRound({
