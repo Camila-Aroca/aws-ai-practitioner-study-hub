@@ -158,6 +158,8 @@
       renderQuestionBank(hash);
     }else if(hash.startsWith("#/full-exam")){
       renderFullExam(hash);
+    }else if(hash.startsWith("#/link-hub")){
+      renderLinkHub();
     }else if(hash.startsWith("#/activity/")){
       renderActivity(hash.split("/")[2], hash.split("/")[3]);
     }else{
@@ -197,6 +199,7 @@
       if(domain.number === 2 && addendum) els.sidebar.appendChild(makeAddendumSidebar());
     });
     els.sidebar.appendChild(navLink("#/exam-center", "Exam Center"));
+    els.sidebar.appendChild(navLink("#/link-hub", "Link Hub"));
     wireSidebarToggles();
   }
 
@@ -427,6 +430,18 @@
           </article>
         </div>
       </section>
+      <section class="page-section">
+        <h2>Link Hub</h2>
+        <p>Connect with the AWS SBG Antonio Varas community.</p>
+        <div class="badge-row">
+          <a class="objective-badge" href="https://www.meetup.com/aws-cloud-club-in-chile/" target="_blank" rel="noopener noreferrer">Meetup</a>
+          <a class="objective-badge" href="https://www.linkedin.com/company/aws-sbg-duoc-avaras/about/" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+          <a class="objective-badge" href="https://chat.whatsapp.com/EZbJ86mQNEhDEFB1HoELn8" target="_blank" rel="noopener noreferrer">WhatsApp</a>
+          <a class="objective-badge" href="https://github.com/AWS-SBG-AntonioVaras" target="_blank" rel="noopener noreferrer">GitHub</a>
+          <a class="objective-badge" href="https://aws-sbg-antoniovaras.github.io/Web-SBG/" target="_blank" rel="noopener noreferrer">Website</a>
+          <button class="objective-badge route-button" data-route="#/link-hub" type="button">View all</button>
+        </div>
+      </section>
       <section class="two-col">
         <div class="page-section">
           <h2>Review weak areas</h2>
@@ -445,6 +460,38 @@
       const first = weak[0] || visible[0];
       setRoute("#/activity/" + first.id);
     });
+    wireRouteButtons();
+  }
+
+  const sbgLinks = [
+    {label:"Meetup", url:"https://www.meetup.com/aws-cloud-club-in-chile/", description:"Official Meetup channel — talks, workshops, and hands-on sessions on AWS."},
+    {label:"LinkedIn", url:"https://www.linkedin.com/company/aws-sbg-duoc-avaras/about/", description:"Official LinkedIn page — news, announcements, and opportunities."},
+    {label:"WhatsApp", url:"https://chat.whatsapp.com/EZbJ86mQNEhDEFB1HoELn8", description:"Official WhatsApp community — questions, announcements, and direct connection."},
+    {label:"GitHub", url:"https://github.com/AWS-SBG-AntonioVaras", description:"GitHub organization — open-source repositories, event materials, and projects."},
+    {label:"Website", url:"https://aws-sbg-antoniovaras.github.io/Web-SBG/", description:"AWS Student Builder Group Antonio Varas website — team, events, and legal."},
+    {label:"Last event repo", url:"https://github.com/AWS-SBG-AntonioVaras/Introduccion-a-la-nube-2026", description:"Materials from the latest event: Introduction to AWS — First Steps in the Cloud."}
+  ];
+
+  function linkHubCard(link){
+    return `<article class="domain-card">
+      <p class="objective-label">${escapeHTML(link.label)}</p>
+      <h3>${escapeHTML(link.label)}</h3>
+      <p>${escapeHTML(link.description)}</p>
+      <a class="act" href="${escapeHTML(link.url)}" target="_blank" rel="noopener noreferrer">Open ${escapeHTML(link.label)}</a>
+    </article>`;
+  }
+
+  function renderLinkHub(){
+    els.app.innerHTML = `
+      <section class="hero-panel">
+        <p class="objective-label">Community</p>
+        <h2>Link Hub</h2>
+        <p>Connect with the AWS Student Builder Group Antonio Varas community — official channels, events, and resources.</p>
+      </section>
+      <section class="page-section">
+        <div class="domain-grid">${sbgLinks.map(linkHubCard).join("")}</div>
+      </section>
+    `;
     wireRouteButtons();
   }
 
