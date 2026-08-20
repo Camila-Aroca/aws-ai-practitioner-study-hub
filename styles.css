@@ -548,6 +548,34 @@ body{
 }
 .review-item summary{cursor:pointer;color:var(--garnet);font-weight:650}
 .review-item ul{padding-left:1.2rem}
+.review-options{list-style:none;padding-left:0;margin:.6rem 0}
+.review-option{
+  padding:.4rem .6rem;
+  margin:.25rem 0;
+  border:1px solid var(--rule);
+  border-left:3px solid var(--rule);
+  background:rgba(255,255,255,.45);
+  border-radius:2px;
+  font-size:.9rem;
+}
+.review-option.is-correct{
+  border-color:var(--khaki);
+  border-left-color:var(--khaki-deep);
+  background:rgba(157,173,113,.13);
+}
+.review-option.is-wrong{
+  border-color:var(--rose);
+  border-left-color:var(--garnet);
+  background:rgba(227,135,146,.14);
+}
+.review-option-marker{
+  font-family:var(--mono);
+  font-size:.74rem;
+  font-weight:700;
+  margin-left:.35rem;
+}
+.review-option.is-correct .review-option-marker{color:var(--khaki-deep)}
+.review-option.is-wrong .review-option-marker{color:var(--garnet)}
 .reinforce-section{
   border-top:1px solid var(--rule);
   padding-top:1rem;
