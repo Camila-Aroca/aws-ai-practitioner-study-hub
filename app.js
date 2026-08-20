@@ -2568,11 +2568,28 @@
         <p><strong>Your answer:</strong> ${escapeHTML(cyuAnswerText(question, item.answer))}</p>
         <p><strong>Correct answer:</strong> ${escapeHTML(cyuCorrectText(question))}</p>
         ${question.explanation ? `<p>${escapeHTML(question.explanation)}</p>` : ""}
-        ${cyuIncorrectExplanations(question).length ? `<ul>${cyuIncorrectExplanations(question).map(text => `<li>${escapeHTML(text)}</li>`).join("")}</ul>` : ""}
+        ${renderReviewOptionList(question, item.answer)}
         ${question.takeaway ? `<p><strong>Takeaway:</strong> ${escapeHTML(question.takeaway)}</p>` : ""}
         <p class="source-note">${escapeHTML(question.source || "Master Study Guide CYU")} · Domain ${question.domain} · ${escapeHTML(cyuTypeLabel(question.type))}</p>
       </div>
     </details>`;
+  }
+
+  function renderReviewOptionList(question, selectedAnswer){
+    const options = question.options || [];
+    if(!options.length) return "";
+    const selected = Array.isArray(selectedAnswer) ? selectedAnswer : [];
+    const correct = question.correctAnswers || [];
+    return `<ul class="review-options">${options.map(option => {
+      const isCorrect = correct.includes(option.id);
+      const isSelected = selected.includes(option.id);
+      const classes = ["review-option"];
+      if(isCorrect) classes.push("is-correct");
+      else if(isSelected) classes.push("is-wrong");
+      const marker = isCorrect ? "Correct" : isSelected ? "Your choice" : "";
+      const note = isCorrect ? "" : (question.distractorExplanations && question.distractorExplanations[option.id]) || (question.incorrectOptionExplanations && question.incorrectOptionExplanations[option.id]) || "";
+      return `<li class="${classes.join(" ")}"><strong>${escapeHTML(option.id.toUpperCase())}.</strong> ${escapeHTML(option.text)}${marker ? ` <span class="review-option-marker">${marker}</span>` : ""}${note ? ` — ${escapeHTML(note)}` : ""}</li>`;
+    }).join("")}</ul>`;
   }
 
   function examProgress(activityId){
@@ -2923,7 +2940,7 @@
         <p><strong>Your answer:</strong> ${answerText(question, selected) || "Unanswered"}</p>
         <p><strong>Correct answer:</strong> ${answerText(question, question.correctAnswers)}</p>
         <p><strong>Explanation:</strong> ${escapeHTML(question.explanation)}</p>
-        <ul>${question.options.map(option => `<li><strong>${option.id.toUpperCase()}.</strong> ${escapeHTML(option.text)} ${question.correctAnswers.includes(option.id) ? "Correct." : escapeHTML(question.distractorExplanations[option.id] || "")}</li>`).join("")}</ul>
+        ${renderReviewOptionList(question, selected)}
         <p class="domain-meta">Task ${question.task} · Objective ${question.objective} · ${question.sourceReference}</p>
         ${!item.correct && reinforcementForObjective(question.objective) ? `<button class="link-button route-button reinforcement-review-link" data-objective="${question.objective}" data-route="#/activity/${reinforcementForObjective(question.objective).id}" type="button">Practice this distinction</button>` : ""}
       </details>`;
