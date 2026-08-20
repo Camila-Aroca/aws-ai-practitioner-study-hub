@@ -1943,7 +1943,9 @@
         <div class="hero-actions">
           <button class="act" id="checkBankAnswer" type="button">${wasChecked ? "Update check" : "Check answer"}</button>
           <button class="act ghost" id="prevBankQuestion" type="button" ${index === 0 ? "disabled" : ""}>Previous</button>
-          <button class="act ghost" id="nextBankQuestion" type="button" ${index === session.questionIds.length - 1 ? "disabled" : ""}>Next</button>
+          ${index === session.questionIds.length - 1
+            ? `<button class="act ghost route-button" data-route="#/question-bank" type="button">Back to bank</button>`
+            : `<button class="act ghost" id="nextBankQuestion" type="button">Next</button>`}
         </div>
         ${wasChecked ? renderCyuFeedback(question, answer, isCyuCorrect(question, answer)) : ""}
       </section>
@@ -1964,7 +1966,8 @@
       saveProgress();
       renderQuestionBankSession(key, session.questionIds);
     });
-    document.getElementById("nextBankQuestion").addEventListener("click", () => {
+    const nextBank = document.getElementById("nextBankQuestion");
+    if(nextBank) nextBank.addEventListener("click", () => {
       session.currentIndex = Math.min(session.questionIds.length - 1, index + 1);
       saveProgress();
       renderQuestionBankSession(key, session.questionIds);
@@ -2059,8 +2062,9 @@
         <div class="hero-actions">
           <button class="act ghost" id="prevFullQuestion" type="button" ${index === 0 ? "disabled" : ""}>Previous</button>
           <button class="act ghost" id="flagFullQuestion" type="button">${attempt.flagged[question.id] ? "Unflag" : "Flag"}</button>
-          <button class="act ghost" id="nextFullQuestion" type="button" ${index === attempt.questionIds.length - 1 ? "disabled" : ""}>Next</button>
-          <button class="act" id="finishFullExam" type="button">Finish exam</button>
+          ${index === attempt.questionIds.length - 1
+            ? `<button class="act" id="finishFullExam" type="button">Finish exam</button>`
+            : `<button class="act ghost" id="nextFullQuestion" type="button">Next</button>`}
         </div>
       </section>
     `;
@@ -2081,13 +2085,15 @@
       });
     });
     document.getElementById("prevFullQuestion").addEventListener("click", () => moveFullExam(-1));
-    document.getElementById("nextFullQuestion").addEventListener("click", () => moveFullExam(1));
+    const nextFull = document.getElementById("nextFullQuestion");
+    if(nextFull) nextFull.addEventListener("click", () => moveFullExam(1));
     document.getElementById("flagFullQuestion").addEventListener("click", () => {
       attempt.flagged[question.id] = !attempt.flagged[question.id];
       saveProgress();
       renderFullExamQuestion();
     });
-    document.getElementById("finishFullExam").addEventListener("click", () => {
+    const finishFull = document.getElementById("finishFullExam");
+    if(finishFull) finishFull.addEventListener("click", () => {
       attempt.answers[question.id] = readCyuAnswer(question, "full");
       saveProgress();
       const answered = attempt.questionIds.filter(id => isCyuAnswered(cyuQuestionById(id), attempt.answers[id])).length;
