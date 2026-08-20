@@ -2468,7 +2468,12 @@
     const routes = [];
     activities.forEach(activity => {
       (activity.rounds || []).forEach(round => {
-        const objectives = (round.objectiveCodes || activity.objectiveCodes || []).concat(round.hierarchy && round.hierarchy.subtaskId ? [round.hierarchy.subtaskId] : []);
+        const roundObjectives = []
+          .concat(round.objectiveCodes || [])
+          .concat(round.objective ? [round.objective] : [])
+          .concat(round.hierarchy && round.hierarchy.subtaskId ? [round.hierarchy.subtaskId] : [])
+          .concat(round.hierarchy && round.hierarchy.sourceObjectiveId ? [round.hierarchy.sourceObjectiveId] : []);
+        const objectives = roundObjectives.length ? roundObjectives : (activity.objectiveCodes || []);
         if(objectives.includes(objective)) routes.push({label:round.title || activity.title, route:"#/activity/" + activity.id + "/" + round.id});
       });
     });
