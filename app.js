@@ -430,18 +430,6 @@
           </article>
         </div>
       </section>
-      <section class="page-section">
-        <h2>Link Hub</h2>
-        <p>Connect with the AWS SBG Antonio Varas community.</p>
-        <div class="badge-row">
-          <a class="objective-badge" href="https://www.meetup.com/aws-cloud-club-in-chile/" target="_blank" rel="noopener noreferrer">Meetup</a>
-          <a class="objective-badge" href="https://www.linkedin.com/company/aws-sbg-duoc-avaras/about/" target="_blank" rel="noopener noreferrer">LinkedIn</a>
-          <a class="objective-badge" href="https://chat.whatsapp.com/EZbJ86mQNEhDEFB1HoELn8" target="_blank" rel="noopener noreferrer">WhatsApp</a>
-          <a class="objective-badge" href="https://github.com/AWS-SBG-AntonioVaras" target="_blank" rel="noopener noreferrer">GitHub</a>
-          <a class="objective-badge" href="https://aws-sbg-antoniovaras.github.io/Web-SBG/" target="_blank" rel="noopener noreferrer">Website</a>
-          <button class="objective-badge route-button" data-route="#/link-hub" type="button">View all</button>
-        </div>
-      </section>
       <section class="two-col">
         <div class="page-section">
           <h2>Review weak areas</h2>
@@ -450,6 +438,19 @@
         <div class="page-section">
           <h2>Recently completed</h2>
           ${recent.length ? activityList(recent) : `<p class="muted">Completed activities will appear here.</p>`}
+        </div>
+      </section>
+      <section class="page-section">
+        <h2>Link Hub</h2>
+        <p>Connect with the AWS SBG Antonio Varas community.</p>
+        <div class="badge-row">
+          <a class="objective-badge" href="https://www.meetup.com/aws-cloud-club-in-chile/" target="_blank" rel="noopener noreferrer">Meetup</a>
+          <a class="objective-badge" href="https://www.linkedin.com/company/aws-sbg-duoc-avaras/about/" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+          <a class="objective-badge" href="https://www.instagram.com/aws.sbg.duocavaras/" target="_blank" rel="noopener noreferrer">Instagram</a>
+          <a class="objective-badge" href="https://chat.whatsapp.com/EZbJ86mQNEhDEFB1HoELn8" target="_blank" rel="noopener noreferrer">WhatsApp</a>
+          <a class="objective-badge" href="https://github.com/AWS-SBG-AntonioVaras" target="_blank" rel="noopener noreferrer">GitHub</a>
+          <a class="objective-badge" href="https://aws-sbg-antoniovaras.github.io/Web-SBG/" target="_blank" rel="noopener noreferrer">Website</a>
+          <button class="objective-badge route-button" data-route="#/link-hub" type="button">View all</button>
         </div>
       </section>
     `;
@@ -466,6 +467,7 @@
   const sbgLinks = [
     {label:"Meetup", url:"https://www.meetup.com/aws-cloud-club-in-chile/", description:"Official Meetup channel — talks, workshops, and hands-on sessions on AWS."},
     {label:"LinkedIn", url:"https://www.linkedin.com/company/aws-sbg-duoc-avaras/about/", description:"Official LinkedIn page — news, announcements, and opportunities."},
+    {label:"Instagram", url:"https://www.instagram.com/aws.sbg.duocavaras/", description:"Official Instagram account — community highlights and event photos."},
     {label:"WhatsApp", url:"https://chat.whatsapp.com/EZbJ86mQNEhDEFB1HoELn8", description:"Official WhatsApp community — questions, announcements, and direct connection."},
     {label:"GitHub", url:"https://github.com/AWS-SBG-AntonioVaras", description:"GitHub organization — open-source repositories, event materials, and projects."},
     {label:"Website", url:"https://aws-sbg-antoniovaras.github.io/Web-SBG/", description:"AWS Student Builder Group Antonio Varas website — team, events, and legal."},
@@ -593,7 +595,7 @@
     const total = totalForRound(round);
     const best = rp.total ? Math.round((rp.bestScore || 0) / rp.total * 100) : 0;
     const status = rp.mastered ? "Mastered" : rp.attempts ? "In progress" : rp.revealed ? "Revealed" : "Not started";
-    const objectives = (round.objectiveCodes || activity.objectiveCodes).join(", ");
+    const objectives = compressObjectiveCodes(round.objectiveCodes || activity.objectiveCodes);
     const description = (round.instructions || "").split(". ")[0] + ".";
     const isChallenge = /challenge/i.test(round.difficulty || round.title || "") || (round.tags || []).includes("challenge");
     return `<article class="activity-card addendum-unit">
@@ -738,7 +740,7 @@
     const rec = recommendedReinforcement(activity.id);
     return `<article class="activity-card reinforcement-card">
       <div>
-        <p class="objective-label">${activity.objectiveCodes.join(", ")} · ${activity.activityType}</p>
+        <p class="objective-label">${compressObjectiveCodes(activity.objectiveCodes)} · ${activity.activityType}</p>
         <h4>${activity.title}</h4>
         <p>${rec.reason || activity.shortDescription}</p>
         <p class="domain-meta">Most recent ${stats.latestPercent || 0}% · Best ${stats.bestPercent}%</p>
@@ -769,7 +771,7 @@
     const stats = activityStats(activity);
     return `<article class="activity-card">
       <div>
-        <p class="objective-label">${activity.objectiveCodes.join(", ")} · ${activity.activityType}</p>
+        <p class="objective-label">${compressObjectiveCodes(activity.objectiveCodes)} · ${activity.activityType}</p>
         <h4>${activity.title}</h4>
         <p>${activity.shortDescription}</p>
         <p class="domain-meta">${activity.rounds.length} rounds · ${countCards(activity)} cards/questions · ${activity.estimatedTime} · ${activity.difficulty}</p>
@@ -808,7 +810,7 @@
       <section class="activity-shell">
         <header class="activity-header">
           <div>
-            <p class="objective-label">Domain ${activity.domain} · ${activity.taskStatement} · ${(round.objectiveCodes || activity.objectiveCodes).join(", ")}</p>
+            <p class="objective-label">Domain ${activity.domain} · ${activity.taskStatement} · ${compressObjectiveCodes(round.objectiveCodes || activity.objectiveCodes)}</p>
             <h2>${activity.title}</h2>
             <p>${activity.shortDescription}</p>
           </div>
@@ -3121,6 +3123,34 @@
 
   function numberWord(n){
     return n === 2 ? "TWO" : n === 3 ? "THREE" : String(n);
+  }
+
+  function compressObjectiveCodes(codes){
+    if(!codes || !codes.length) return "";
+    const sorted = [...codes].sort();
+    const groups = [];
+    let start = sorted[0], prev = sorted[0];
+    for(let i = 1; i < sorted.length; i++){
+      const cur = sorted[i];
+      if(isConsecutive(prev, cur)){
+        prev = cur;
+      }else{
+        groups.push(start === prev ? start : start + "–" + prev);
+        start = cur;
+        prev = cur;
+      }
+    }
+    groups.push(start === prev ? start : start + "–" + prev);
+    return groups.join(", ");
+  }
+
+  function isConsecutive(a, b){
+    const pa = a.split("."), pb = b.split(".");
+    if(pa.length !== pb.length) return false;
+    for(let i = 0; i < pa.length - 1; i++){
+      if(pa[i] !== pb[i]) return false;
+    }
+    return Number(pa[pa.length - 1]) + 1 === Number(pb[pb.length - 1]);
   }
 
   function escapeHTML(value){
