@@ -66,6 +66,11 @@ body{
   text-transform:uppercase;
   letter-spacing:1px;
 }
+.title-link{
+  color:inherit;
+  text-decoration:none;
+}
+.title-link:hover{color:var(--aws-mint)}
 .hub-topbar .link-button{margin-left:auto}
 .menu-button{
   display:none;
@@ -226,10 +231,10 @@ body{
   border-radius:0;
   box-shadow:4px 4px 0px rgba(255,153,0,.4);
 }
-.summary-card{padding:.85rem 1rem}
+.summary-card{padding:.85rem 1rem;text-align:center}
 .summary-card span{display:block;color:var(--text-muted);font-size:.84rem}
 .summary-card b{font-family:var(--mono);color:var(--aws-orange);font-size:1.1rem}
-.domain-card{padding:1rem}
+.domain-card{padding:1rem;text-align:center}
 .domain-card h3,.task-group h3,.activity-card h4{
   font-family:var(--display);
   color:var(--aws-mint);
@@ -239,6 +244,8 @@ body{
   letter-spacing:.5px;
 }
 .domain-card p,.activity-card p{font-size:.86rem;color:var(--text-muted)}
+.domain-card .progress-bar{margin:.75rem auto .45rem}
+.domain-card .act{margin-top:.5rem}
 .domain-meta{font-family:var(--mono);font-size:.72rem!important;color:var(--text-muted)!important}
 .progress-bar{
   height:.42rem;
@@ -364,6 +371,7 @@ body{
   gap:1rem;
   max-width:1040px;
 }
+.two-col .page-section h2{text-align:center}
 .task-group{padding:1rem;margin:1rem 0}
 .activity-list{display:grid;gap:.75rem}
 .guide-browser{margin-bottom:1.2rem}
@@ -975,6 +983,7 @@ main{padding-top:1.2rem}
   flex-wrap:wrap;
   gap:.6rem;
   align-items:center;
+  justify-content:center;
 }
 button.act{
   font-family:var(--display);
@@ -1035,10 +1044,11 @@ button.act.ghost:hover{background:rgba(255,255,255,.06);border-color:var(--aws-b
 .exam-tip p{margin:0;color:var(--text-muted)}
 .footnote{
   margin-top:2.4rem;
-  padding-top:1.1rem;
+  padding:1.1rem 1.5rem;
   border-top:1px solid var(--border-subtle);
   font-size:.82rem;
   color:var(--text-muted);
+  text-align:center;
 }
 .footnote strong{color:var(--aws-orange)}
 
