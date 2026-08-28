@@ -10,10 +10,16 @@
   <header class="hub-topbar">
     <button class="menu-button" id="menuButton" type="button" aria-expanded="false" aria-controls="sidebar">Menu</button>
     <div>
-      <p class="eyebrow">AIF-C01 interactive study activities</p>
-      <h1><a href="#/home" class="title-link">AWS AI Practitioner Study Hub</a></h1>
+      <p class="eyebrow" id="topbarEyebrow">AIF-C01 interactive study activities</p>
+      <h1><a href="#/home" class="title-link" id="topbarTitle">AWS AI Practitioner Study Hub</a></h1>
     </div>
-    <button class="link-button" id="resetProgress" type="button">Reset progress</button>
+    <div class="topbar-actions">
+      <div class="lang-toggle" role="group" aria-label="Language / Idioma">
+        <button type="button" class="lang-btn" id="langBtnEn" data-lang="en" aria-pressed="true">EN</button>
+        <button type="button" class="lang-btn" id="langBtnEs" data-lang="es" aria-pressed="false">ES</button>
+      </div>
+      <button class="link-button" id="resetProgress" type="button">Reset progress</button>
+    </div>
   </header>
 
   <div class="hub-shell">
@@ -22,7 +28,7 @@
   </div>
 
   <footer class="footnote hub-footer">
-    <strong>AWS Student Builder Group — Antonio Varas.</strong> Built from the study guide and local study activities in this repository. This is not an official AWS product and does not use AWS logos.
+    <strong id="footerOrg">AWS Student Builder Group — Antonio Varas.</strong> <span id="footerText">Built from the study guide and local study activities in this repository. This is not an official AWS product and does not use AWS logos.</span>
   </footer>
 
   <script src="data/domain1.js"></script>
@@ -36,6 +42,27 @@
   <script src="data/domain2-addendum.js"></script>
   <script src="data/domains345.js"></script>
   <script src="data/study-hub.js"></script>
+  <script src="data/i18n/ui-strings.js"></script>
+  <script src="data/i18n/es/domains.js"></script>
+  <script src="data/i18n/es/guide-hierarchy.js"></script>
+  <script src="data/i18n/es/activities.js"></script>
+  <script src="data/i18n/es/enum-values.js"></script>
+  <script src="data/i18n/es/addendum-meta.js"></script>
+  <script src="data/i18n/es/matrix-tables.js"></script>
+  <script src="data/i18n/es/rounds-domain1.js"></script>
+  <script src="data/i18n/es/rounds-domain2.js"></script>
+  <script src="data/i18n/es/rounds-domain3.js"></script>
+  <script src="data/i18n/es/rounds-domain4.js"></script>
+  <script src="data/i18n/es/rounds-domain5.js"></script>
+  <script src="data/i18n/es/reinforcement.js"></script>
+  <script src="data/i18n/es/domain1-question-bank.js"></script>
+  <script src="data/i18n/es/cyu-question-bank-d1.js"></script>
+  <script src="data/i18n/es/cyu-question-bank-d2.js"></script>
+  <script src="data/i18n/es/cyu-question-bank-d3.js"></script>
+  <script src="data/i18n/es/cyu-question-bank-d4.js"></script>
+  <script src="data/i18n/es/cyu-question-bank-d5.js"></script>
+  <script src="data/i18n/es/supplemental.js"></script>
+  <script src="data/i18n/apply-locale.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

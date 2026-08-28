@@ -71,7 +71,27 @@ body{
   text-decoration:none;
 }
 .title-link:hover{color:var(--aws-mint)}
-.hub-topbar .link-button{margin-left:auto}
+.topbar-actions{margin-left:auto;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap}
+.lang-toggle{display:flex;gap:.25rem}
+.lang-btn{
+  font-family:var(--body);
+  background:transparent;
+  border:2px solid var(--border-subtle);
+  color:var(--text-light);
+  padding:.3rem .55rem;
+  cursor:pointer;
+  border-radius:0;
+  font-size:.72rem;
+  font-weight:700;
+  letter-spacing:.03em;
+  transition:all .15s ease;
+}
+.lang-btn:hover{border-color:var(--aws-blue);color:var(--aws-blue)}
+.lang-btn[aria-pressed="true"]{
+  background:var(--aws-orange);
+  border-color:var(--aws-orange);
+  color:#000;
+}
 .menu-button{
   display:none;
   border:2px solid var(--border-color);
@@ -792,7 +812,9 @@ body{
   color:#000;
   font-weight:700;
 }
-.round-tab.is-mastered::after{content:" mastered";font-family:var(--mono);font-size:.66rem;opacity:.8}
+.round-tab.is-mastered::after{font-family:var(--mono);font-size:.66rem;opacity:.8}
+html:not([lang="es"]) .round-tab.is-mastered::after{content:" mastered"}
+html[lang="es"] .round-tab.is-mastered::after{content:" dominado"}
 .round-tab .tab-count{font-family:var(--mono);font-size:.68rem;opacity:.72;margin-left:.3rem}
 
 .progress-strip{
@@ -1058,7 +1080,7 @@ button.act.ghost:hover{background:rgba(255,255,255,.06);border-color:var(--aws-b
   .hub-topbar > div{min-width:0}
   .hub-topbar h1{font-size:1rem}
   .menu-button{display:inline-block}
-  .hub-topbar .link-button{margin-left:0}
+  .topbar-actions{margin-left:0}
   .hub-shell{display:block}
   .sidebar{
     display:none;

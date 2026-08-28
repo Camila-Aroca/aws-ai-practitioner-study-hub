@@ -20,8 +20,91 @@
     app: document.getElementById("app"),
     sidebar: document.getElementById("sidebar"),
     menu: document.getElementById("menuButton"),
-    reset: document.getElementById("resetProgress")
+    reset: document.getElementById("resetProgress"),
+    langEn: document.getElementById("langBtnEn"),
+    langEs: document.getElementById("langBtnEs")
   };
+
+  const LANG_KEY = window.I18N_LANG_KEY || "aif-c01-study-hub-lang";
+
+  function getLang(){
+    let stored = null;
+    try{ stored = localStorage.getItem(LANG_KEY); }catch(err){}
+    return stored === "es" ? "es" : "en";
+  }
+
+  function updateStaticChrome(){
+    document.title = t("app.title");
+    const eyebrow = document.getElementById("topbarEyebrow");
+    const title = document.getElementById("topbarTitle");
+    const footerOrg = document.getElementById("footerOrg");
+    const footerText = document.getElementById("footerText");
+    if(eyebrow) eyebrow.textContent = t("app.eyebrow");
+    if(title) title.textContent = t("app.title");
+    els.menu.textContent = t("app.menu");
+    els.reset.textContent = t("app.resetProgress");
+    if(footerOrg) footerOrg.textContent = t("app.footerOrg");
+    if(footerText) footerText.textContent = t("app.footerText");
+    if(els.langEn) els.langEn.setAttribute("aria-pressed", String(getLang() === "en"));
+    if(els.langEs) els.langEs.setAttribute("aria-pressed", String(getLang() === "es"));
+  }
+
+  function setLang(lang){
+    const next = lang === "es" ? "es" : "en";
+    try{ localStorage.setItem(LANG_KEY, next); }catch(err){}
+    if(window.applyLocale) window.applyLocale(next);
+    document.documentElement.lang = next;
+    updateStaticChrome();
+  }
+
+  // Applies the saved (or default) language to the data and static chrome before the
+  // very first render, so a returning Spanish-preference user never sees an English flash.
+  setLang(getLang());
+
+  // Captures which card sits in which slot / which true-false answers are selected, so an
+  // in-progress (unchecked) attempt survives a language switch instead of resetting to the
+  // loose-card bank. Only meaningful on a card-round or true/false screen.
+  function captureBoardState(){
+    if(!activeActivity || !activeRoundId) return null;
+    const placements = Array.from(document.querySelectorAll(".slot")).map(slot => ({
+      expects: slot.dataset.expects,
+      cardIds: Array.from(slot.querySelectorAll(".card")).map(el => el.dataset.cardId)
+    })).filter(entry => entry.cardIds.length);
+    const tfAnswers = Array.from(document.querySelectorAll(".tf-item")).map(item => ({
+      cardId: item.dataset.cardId,
+      answer: item.dataset.answer
+    })).filter(entry => entry.answer);
+    if(!placements.length && !tfAnswers.length) return null;
+    return {activityId:activeActivity.id, roundId:activeRoundId, placements, tfAnswers};
+  }
+
+  function restoreBoardState(state){
+    if(!state || !activeActivity || activeActivity.id !== state.activityId || activeRoundId !== state.roundId) return;
+    state.placements.forEach(entry => {
+      const slot = document.querySelector('.slot[data-expects="' + CSS.escape(entry.expects) + '"]');
+      if(!slot) return;
+      entry.cardIds.forEach(cardId => {
+        const el = document.querySelector('.card[data-card-id="' + CSS.escape(cardId) + '"]');
+        if(el) slot.appendChild(el);
+      });
+    });
+    state.tfAnswers.forEach(entry => {
+      const item = document.querySelector('.tf-item[data-card-id="' + CSS.escape(entry.cardId) + '"]');
+      if(!item) return;
+      item.dataset.answer = entry.answer;
+      item.querySelectorAll(".tf-choice").forEach(choice => choice.classList.toggle("is-selected", choice.dataset.value === entry.answer));
+    });
+    if(document.getElementById("bank")) refreshBankEmpty();
+    updateTally();
+  }
+
+  function switchLanguage(lang){
+    if(lang === getLang()) return;
+    const boardState = captureBoardState();
+    setLang(lang);
+    route();
+    restoreBoardState(boardState);
+  }
 
   let progress = loadProgress();
   let activeActivity = null;
@@ -141,6 +224,33 @@
     };
   }
 
+  const STATUS_KEYS = {
+    "Mastered":"status.mastered", "In progress":"status.inProgress", "Completed":"status.completed",
+    "Not started":"status.notStarted", "Review again":"status.reviewAgain", "Recommended":"status.recommended",
+    "Revealed":"status.revealed"
+  };
+  function statusLabel(status){
+    return STATUS_KEYS[status] ? t(STATUS_KEYS[status]) : status;
+  }
+
+  // taskStatement is stored in English on the data objects because it is also used for
+  // internal matching (see renderGuideTask's "Task "+code .includes check) - only translate
+  // it at display time, never in the underlying data.
+  const TASK_STATEMENT_KEYS = {
+    "Domain 1 Reinforcement Units":"taskStatement.d1ReinforcementUnits",
+    "Domain 1 review":"taskStatement.d1Review",
+    "Domain 2 — Addendum":"taskStatement.d2Addendum",
+    "Task 1.3":"taskStatement.task13",
+    "Tasks 1.1-1.2":"taskStatement.tasks1112",
+    "Tasks 2.1-2.3":"taskStatement.tasks2123",
+    "Tasks 3.1-3.4":"taskStatement.tasks3134",
+    "Tasks 4.1-4.2":"taskStatement.tasks4142",
+    "Tasks 5.1-5.2":"taskStatement.tasks5152"
+  };
+  function taskStatementLabel(ts){
+    return TASK_STATEMENT_KEYS[ts] ? t(TASK_STATEMENT_KEYS[ts]) : ts;
+  }
+
   function domainActivities(number){
     return activities.filter(activity => activity.domain === number && activity.available !== false && !activity.hiddenFromDashboard).sort((a,b) => a.order - b.order);
   }
@@ -176,12 +286,12 @@
 
   function renderSidebar(){
     els.sidebar.innerHTML = "";
-    const home = navLink("#/home", "Home");
+    const home = navLink("#/home", t("nav.home"));
     els.sidebar.appendChild(home);
     data.domains.forEach(domain => {
       const group = document.createElement("section");
       group.className = "nav-domain";
-      const link = navLink("#/domain/" + domain.number, "Domain " + domain.number);
+      const link = navLink("#/domain/" + domain.number, t("nav.domain", {n:domain.number}));
       group.appendChild(link);
       if(data.guideHierarchy && data.guideHierarchy.domains.some(item => item.number === domain.number)){
         group.appendChild(makeSidebarHierarchy(domain.number));
@@ -198,8 +308,8 @@
       els.sidebar.appendChild(group);
       if(domain.number === 2 && addendum) els.sidebar.appendChild(makeAddendumSidebar());
     });
-    els.sidebar.appendChild(navLink("#/exam-center", "Exam Center"));
-    els.sidebar.appendChild(navLink("#/link-hub", "Link Hub"));
+    els.sidebar.appendChild(navLink("#/exam-center", t("nav.examCenter")));
+    els.sidebar.appendChild(navLink("#/link-hub", t("nav.linkHub")));
     wireSidebarToggles();
   }
 
@@ -236,7 +346,7 @@
       const taskOpen = isCurrentTask(task, taskSets);
       const taskNode = document.createElement("section");
       taskNode.className = "nav-task";
-      taskNode.appendChild(sidebarToggle("task-" + task.taskId, "Task " + task.taskCode + " " + task.taskTitle, firstRoute(taskSets), taskSets.reduce((sum,set) => sum + set.cardCount, 0), taskOpen, "nav-task-toggle"));
+      taskNode.appendChild(sidebarToggle("task-" + task.taskId, t("nav.task") + " " + task.taskCode + " " + task.taskTitle, firstRoute(taskSets), taskSets.reduce((sum,set) => sum + set.cardCount, 0), taskOpen, "nav-task-toggle"));
       const taskPanel = document.createElement("div");
       taskPanel.id = "task-" + task.taskId;
       taskPanel.className = "nav-task-panel";
@@ -271,14 +381,14 @@
     toggle.dataset.panel = panelId;
     toggle.setAttribute("aria-expanded", String(open));
     toggle.setAttribute("aria-controls", panelId);
-    toggle.setAttribute("aria-label", (open ? "Collapse " : "Expand ") + text);
+    toggle.setAttribute("aria-label", t(open ? "nav.collapse" : "nav.expand", {text}));
     toggle.textContent = open ? "⌄" : "›";
     const link = navLink(route, text);
     link.classList.add(className + "-link");
     const meta = document.createElement("span");
     meta.className = "nav-count";
-    meta.textContent = count + " cards";
-    meta.setAttribute("aria-label", count + " cards");
+    meta.textContent = t("nav.cardsCount", {n:count});
+    meta.setAttribute("aria-label", t("nav.cardsCount", {n:count}));
     row.appendChild(toggle);
     row.appendChild(link);
     row.appendChild(meta);
@@ -292,12 +402,12 @@
     const count = document.createElement("span");
     count.className = "nav-count";
     count.textContent = set.cardCount;
-    count.setAttribute("aria-label", set.cardCount + " cards");
+    count.setAttribute("aria-label", t("nav.cardsCount", {n:set.cardCount}));
     if(rp.mastered){
       const done = document.createElement("span");
       done.className = "nav-done";
       done.textContent = "✓";
-      done.setAttribute("aria-label", "mastered");
+      done.setAttribute("aria-label", t("nav.mastered"));
       a.appendChild(done);
     }
     a.appendChild(count);
@@ -318,11 +428,11 @@
   }
 
   function addendumOverviewLink(){
-    const a = navLink(addendum.overviewRoute, "Overview");
+    const a = navLink(addendum.overviewRoute, t("nav.overview"));
     a.classList.add("nav-cardset");
     const count = document.createElement("span");
     count.className = "nav-count";
-    count.textContent = "path";
+    count.textContent = t("nav.path");
     a.appendChild(count);
     return a;
   }
@@ -396,53 +506,53 @@
 
     els.app.innerHTML = `
       <section class="hero-panel">
-        <p class="objective-label">Study dashboard</p>
-        <h2>Choose the next useful thing to study.</h2>
-        <p>Track progress across the integrated local activities, continue where you left off, or jump into weak areas that need another pass.</p>
+        <p class="objective-label">${t("home.eyebrow")}</p>
+        <h2>${t("home.heading")}</h2>
+        <p>${t("home.intro")}</p>
         <div class="hero-actions">
-          <button class="act" id="continueBtn" type="button">${continueActivity ? "Continue studying" : "Start studying"}</button>
-          <button class="act ghost" id="reviewBtn" type="button">Review weak areas</button>
+          <button class="act" id="continueBtn" type="button">${continueActivity ? t("home.continueStudying") : t("home.startStudying")}</button>
+          <button class="act ghost" id="reviewBtn" type="button">${t("home.reviewWeak")}</button>
         </div>
       </section>
-      <section class="summary-grid" aria-label="Overall progress">
-        <div class="summary-card"><span>Activities mastered</span><b>${mastered} / ${total}</b></div>
-        <div class="summary-card"><span>Activities started</span><b>${completed} / ${total}</b></div>
-        <div class="summary-card"><span>Overall progress</span><b>${Math.round((mastered / total) * 100)}%</b></div>
+      <section class="summary-grid" aria-label="${t("home.progressLabel")}">
+        <div class="summary-card"><span>${t("home.activitiesMastered")}</span><b>${mastered} / ${total}</b></div>
+        <div class="summary-card"><span>${t("home.activitiesStarted")}</span><b>${completed} / ${total}</b></div>
+        <div class="summary-card"><span>${t("home.overallProgress")}</span><b>${Math.round((mastered / total) * 100)}%</b></div>
       </section>
       <section class="page-section">
-        <h2>Domains</h2>
+        <h2>${t("home.domainsHeading")}</h2>
         <div class="domain-grid">${data.domains.map(domainCard).join("")}</div>
       </section>
       <section class="page-section">
-        <h2>Final Exam Center</h2>
+        <h2>${t("home.examCenterHeading")}</h2>
         <div class="domain-grid">
           <article class="domain-card">
-            <p class="objective-label">Question Bank</p>
-            <h3>Master Question Bank</h3>
-            <p>Review all ${cyuQuestions.length} master-bank questions by domain, objective, type, missed status, or unseen status.</p>
-            <button class="act ghost route-button" data-route="#/question-bank" type="button">Open question bank</button>
+            <p class="objective-label">${t("home.questionBankLabel")}</p>
+            <h3>${t("home.questionBankTitle")}</h3>
+            <p>${t("home.questionBankDesc", {n:cyuQuestions.length})}</p>
+            <button class="act ghost route-button" data-route="#/question-bank" type="button">${t("home.openQuestionBank")}</button>
           </article>
           <article class="domain-card">
-            <p class="objective-label">Full simulation</p>
-            <h3>65-question timed exam</h3>
-            <p>Start a randomized 90-minute attempt sampled from the same CYU question bank with official domain weighting.</p>
-            <button class="act ghost route-button" data-route="#/full-exam" type="button">Open simulated exam</button>
+            <p class="objective-label">${t("home.fullSimLabel")}</p>
+            <h3>${t("home.fullSimTitle")}</h3>
+            <p>${t("home.fullSimDesc")}</p>
+            <button class="act ghost route-button" data-route="#/full-exam" type="button">${t("home.openSimExam")}</button>
           </article>
         </div>
       </section>
       <section class="two-col">
         <div class="page-section">
-          <h2>Review weak areas</h2>
-          ${weak.length ? activityList(weak) : `<p class="muted">No weak areas yet. Complete or check an activity and this will become useful.</p>`}
+          <h2>${t("home.reviewWeakHeading")}</h2>
+          ${weak.length ? activityList(weak) : `<p class="muted">${t("home.noWeakAreas")}</p>`}
         </div>
         <div class="page-section">
-          <h2>Recently completed</h2>
-          ${recent.length ? activityList(recent) : `<p class="muted">Completed activities will appear here.</p>`}
+          <h2>${t("home.recentlyCompletedHeading")}</h2>
+          ${recent.length ? activityList(recent) : `<p class="muted">${t("home.noRecent")}</p>`}
         </div>
       </section>
       <section class="page-section">
-        <h2>Link Hub</h2>
-        <p>Connect with the AWS SBG Antonio Varas community.</p>
+        <h2>${t("home.linkHubHeading")}</h2>
+        <p>${t("home.linkHubIntro")}</p>
         <div class="badge-row">
           <a class="objective-badge" href="https://www.meetup.com/aws-cloud-club-in-chile/" target="_blank" rel="noopener noreferrer">Meetup</a>
           <a class="objective-badge" href="https://www.linkedin.com/company/aws-sbg-duoc-avaras/about/" target="_blank" rel="noopener noreferrer">LinkedIn</a>
@@ -450,7 +560,7 @@
           <a class="objective-badge" href="https://chat.whatsapp.com/EZbJ86mQNEhDEFB1HoELn8" target="_blank" rel="noopener noreferrer">WhatsApp</a>
           <a class="objective-badge" href="https://github.com/AWS-SBG-AntonioVaras" target="_blank" rel="noopener noreferrer">GitHub</a>
           <a class="objective-badge" href="https://aws-sbg-antoniovaras.github.io/Web-SBG/" target="_blank" rel="noopener noreferrer">Website</a>
-          <button class="objective-badge route-button" data-route="#/link-hub" type="button">View all</button>
+          <button class="objective-badge route-button" data-route="#/link-hub" type="button">${t("home.viewAll")}</button>
         </div>
       </section>
     `;
@@ -465,30 +575,31 @@
   }
 
   const sbgLinks = [
-    {label:"Meetup", url:"https://www.meetup.com/aws-cloud-club-in-chile/", description:"Official Meetup channel — talks, workshops, and hands-on sessions on AWS."},
-    {label:"LinkedIn", url:"https://www.linkedin.com/company/aws-sbg-duoc-avaras/about/", description:"Official LinkedIn page — news, announcements, and opportunities."},
-    {label:"Instagram", url:"https://www.instagram.com/aws.sbg.duocavaras/", description:"Official Instagram account — community highlights and event photos."},
-    {label:"WhatsApp", url:"https://chat.whatsapp.com/EZbJ86mQNEhDEFB1HoELn8", description:"Official WhatsApp community — questions, announcements, and direct connection."},
-    {label:"GitHub", url:"https://github.com/AWS-SBG-AntonioVaras", description:"GitHub organization — open-source repositories, event materials, and projects."},
-    {label:"Website", url:"https://aws-sbg-antoniovaras.github.io/Web-SBG/", description:"AWS Student Builder Group Antonio Varas website — team, events, and legal."},
-    {label:"Last event repo", url:"https://github.com/AWS-SBG-AntonioVaras/Introduccion-a-la-nube-2026", description:"Materials from the latest event: Introduction to AWS — First Steps in the Cloud."}
+    {label:"Meetup", url:"https://www.meetup.com/aws-cloud-club-in-chile/", descKey:"sbg.meetup.desc"},
+    {label:"LinkedIn", url:"https://www.linkedin.com/company/aws-sbg-duoc-avaras/about/", descKey:"sbg.linkedin.desc"},
+    {label:"Instagram", url:"https://www.instagram.com/aws.sbg.duocavaras/", descKey:"sbg.instagram.desc"},
+    {label:"WhatsApp", url:"https://chat.whatsapp.com/EZbJ86mQNEhDEFB1HoELn8", descKey:"sbg.whatsapp.desc"},
+    {label:"GitHub", url:"https://github.com/AWS-SBG-AntonioVaras", descKey:"sbg.github.desc"},
+    {labelKey:"sbg.website.label", url:"https://aws-sbg-antoniovaras.github.io/Web-SBG/", descKey:"sbg.website.desc"},
+    {labelKey:"sbg.lastevent.label", url:"https://github.com/AWS-SBG-AntonioVaras/Introduccion-a-la-nube-2026", descKey:"sbg.lastevent.desc"}
   ];
 
   function linkHubCard(link){
+    const label = link.labelKey ? t(link.labelKey) : link.label;
     return `<article class="domain-card">
-      <p class="objective-label">${escapeHTML(link.label)}</p>
-      <h3>${escapeHTML(link.label)}</h3>
-      <p>${escapeHTML(link.description)}</p>
-      <a class="act" href="${escapeHTML(link.url)}" target="_blank" rel="noopener noreferrer">Open ${escapeHTML(link.label)}</a>
+      <p class="objective-label">${escapeHTML(label)}</p>
+      <h3>${escapeHTML(label)}</h3>
+      <p>${escapeHTML(t(link.descKey))}</p>
+      <a class="act" href="${escapeHTML(link.url)}" target="_blank" rel="noopener noreferrer">${escapeHTML(t("linkHub.openPrefix", {label}))}</a>
     </article>`;
   }
 
   function renderLinkHub(){
     els.app.innerHTML = `
       <section class="hero-panel">
-        <p class="objective-label">Community</p>
-        <h2>Link Hub</h2>
-        <p>Connect with the AWS Student Builder Group Antonio Varas community — official channels, events, and resources.</p>
+        <p class="objective-label">${t("linkHub.eyebrow")}</p>
+        <h2>${t("linkHub.heading")}</h2>
+        <p>${t("linkHub.intro")}</p>
       </section>
       <section class="page-section">
         <div class="domain-grid">${sbgLinks.map(linkHubCard).join("")}</div>
@@ -501,12 +612,12 @@
     const acts = domainActivities(domain.number);
     const mastered = acts.filter(activity => activityStats(activity).status === "Mastered").length;
     return `<article class="domain-card">
-      <p class="objective-label">Domain ${domain.number}</p>
+      <p class="objective-label">${t("domainCard.label", {n:domain.number})}</p>
       <h3>${domain.title}</h3>
       <p>${domain.description}</p>
-      <div class="progress-bar" aria-label="${mastered} of ${acts.length} activities mastered"><span style="width:${acts.length ? mastered / acts.length * 100 : 0}%"></span></div>
-      <p class="domain-meta">${mastered} / ${acts.length} mastered${acts.length ? "" : " · More activities coming later"}</p>
-      <button class="act ghost route-button" data-route="#/domain/${domain.number}" type="button">Open domain</button>
+      <div class="progress-bar" aria-label="${t("domainCard.masteredAria", {mastered, total:acts.length})}"><span style="width:${acts.length ? mastered / acts.length * 100 : 0}%"></span></div>
+      <p class="domain-meta">${t("domainCard.masteredOf", {mastered, total:acts.length})}${acts.length ? "" : t("domainCard.moreComingLater")}</p>
+      <button class="act ghost route-button" data-route="#/domain/${domain.number}" type="button">${t("domainCard.openDomain")}</button>
     </article>`;
   }
 
@@ -518,19 +629,19 @@
     if(!domain){ renderHome(); return; }
     els.app.innerHTML = `
       <section class="page-section">
-        <p class="objective-label">Domain ${domain.number}</p>
+        <p class="objective-label">${t("domainCard.label", {n:domain.number})}</p>
         <h2>${domain.title}</h2>
         <p class="muted">${domain.description}</p>
-        ${number === 1 ? `<div class="hero-actions"><button class="act route-button" data-route="#/activity/${recommendedReinforcementRoute()}" type="button">Review weak areas</button></div>` : ""}
+        ${number === 1 ? `<div class="hero-actions"><button class="act route-button" data-route="#/activity/${recommendedReinforcementRoute()}" type="button">${t("home.reviewWeak")}</button></div>` : ""}
       </section>
       ${renderGuideHierarchy(number, acts)}
       ${reinforcement.length ? `
       <section class="page-section">
-        <h3>Domain 1 Reinforcement Units</h3>
+        <h3>${t("domain.reinforcementHeading")}</h3>
         <div class="activity-list reinforcement-list">${reinforcement.map(reinforcementCard).join("")}</div>
       </section>` : ""}
       <section class="page-section">
-        ${acts.length ? groupedActivities(acts) : `<p class="source-note">More activities coming later.</p>`}
+        ${acts.length ? groupedActivities(acts) : `<p class="source-note">${t("domain.moreActivities")}</p>`}
       </section>
     `;
     wireRouteButtons();
@@ -549,33 +660,33 @@
     const finalRound = activity.rounds.find(round => round.id === "addendum-final-review") || activity.rounds[activity.rounds.length - 1];
     els.app.innerHTML = `
       <section class="hero-panel addendum-hero">
-        <p class="objective-label">Domain 2 addendum · focused gap review</p>
+        <p class="objective-label">${t("addendum.eyebrow")}</p>
         <h2>${escapeHTML(addendum.title)}</h2>
         <p>${escapeHTML(addendum.description)}</p>
         <div class="hero-actions">
-          <button class="act route-button" data-route="${next ? addendumRoundRoute(next) : addendumRoundRoute(activity.rounds[0])}" type="button">${stats.completed ? "Continue Addendum" : "Start Addendum"}</button>
-          <button class="act ghost route-button" data-route="${next ? addendumRoundRoute(next) : addendumRoundRoute(finalRound)}" type="button">Review Incorrect Cards</button>
-          <button class="act ghost route-button" data-route="${addendumRoundRoute(finalRound)}" type="button">Mixed Addendum Review</button>
+          <button class="act route-button" data-route="${next ? addendumRoundRoute(next) : addendumRoundRoute(activity.rounds[0])}" type="button">${stats.completed ? t("addendum.continueBtn") : t("addendum.startBtn")}</button>
+          <button class="act ghost route-button" data-route="${next ? addendumRoundRoute(next) : addendumRoundRoute(finalRound)}" type="button">${t("addendum.reviewIncorrect")}</button>
+          <button class="act ghost route-button" data-route="${addendumRoundRoute(finalRound)}" type="button">${t("addendum.mixedReview")}</button>
         </div>
       </section>
-      <section class="summary-grid" aria-label="Addendum progress">
-        <div class="summary-card"><span>Card sets</span><b>${activity.rounds.length}</b></div>
-        <div class="summary-card"><span>Total cards</span><b>${totalCards}</b></div>
-        <div class="summary-card"><span>Sets completed</span><b>${stats.completed} / ${stats.totalRounds}</b></div>
-        <div class="summary-card"><span>Sets mastered</span><b>${stats.mastered} / ${stats.totalRounds}</b></div>
-        <div class="summary-card"><span>Cards attempted</span><b>${attemptedCards} / ${totalCards}</b></div>
-        <div class="summary-card"><span>Cards mastered</span><b>${masteredCards} / ${totalCards}</b></div>
+      <section class="summary-grid" aria-label="${t("addendum.progressLabel")}">
+        <div class="summary-card"><span>${t("addendum.cardSets")}</span><b>${activity.rounds.length}</b></div>
+        <div class="summary-card"><span>${t("addendum.totalCards")}</span><b>${totalCards}</b></div>
+        <div class="summary-card"><span>${t("addendum.setsCompleted")}</span><b>${stats.completed} / ${stats.totalRounds}</b></div>
+        <div class="summary-card"><span>${t("addendum.setsMastered")}</span><b>${stats.mastered} / ${stats.totalRounds}</b></div>
+        <div class="summary-card"><span>${t("addendum.cardsAttempted")}</span><b>${attemptedCards} / ${totalCards}</b></div>
+        <div class="summary-card"><span>${t("addendum.cardsMastered")}</span><b>${masteredCards} / ${totalCards}</b></div>
       </section>
       <section class="page-section addendum-progress">
-        <div class="progress-bar" aria-label="${stats.mastered} of ${stats.totalRounds} addendum sets mastered"><span style="width:${stats.totalRounds ? stats.mastered / stats.totalRounds * 100 : 0}%"></span></div>
-        <p class="domain-meta">Suggested study order is shown below. Free navigation is always available; later sets are not locked.</p>
+        <div class="progress-bar" aria-label="${t("addendum.masteredAria", {mastered:stats.mastered, total:stats.totalRounds})}"><span style="width:${stats.totalRounds ? stats.mastered / stats.totalRounds * 100 : 0}%"></span></div>
+        <p class="domain-meta">${t("addendum.suggestedOrderNote")}</p>
       </section>
       <section class="page-section addendum-filters">
-        <h3>Filter by Official Objective</h3>
-        <div class="badge-row">${Object.entries(objectiveCounts).map(([objective, count]) => `<span class="objective-badge">EXPANDS ${objective} · ${count}</span>`).join("")}</div>
+        <h3>${t("addendum.filterHeading")}</h3>
+        <div class="badge-row">${Object.entries(objectiveCounts).map(([objective, count]) => `<span class="objective-badge">${t("addendum.expandsBadge", {objective, count})}</span>`).join("")}</div>
       </section>
       <section class="page-section addendum-units">
-        <h3>Suggested Study Order</h3>
+        <h3>${t("addendum.studyOrderHeading")}</h3>
         ${addendum.groups.map(group => renderAddendumGroup(activity, group)).join("")}
       </section>
     `;
@@ -600,14 +711,14 @@
     const isChallenge = /challenge/i.test(round.difficulty || round.title || "") || (round.tags || []).includes("challenge");
     return `<article class="activity-card addendum-unit">
       <div>
-        <p class="objective-label">EXPANDS ${escapeHTML(objectives)} · ${escapeHTML(round.hierarchy.difficulty)} · ${isChallenge ? "Normal + Challenge" : "Normal mode"}</p>
+        <p class="objective-label">${t("addendumCard.expandsLabel", {objectives:escapeHTML(objectives), difficulty:escapeHTML(round.hierarchy.difficulty), mode:isChallenge ? t("addendumCard.normalChallenge") : t("addendumCard.normalMode")})}</p>
         <h4>${escapeHTML(round.title)}</h4>
         <p>${escapeHTML(description)}</p>
-        <p class="domain-meta">${total} cards · ${status} · Best ${best}% · ${escapeHTML(round.hierarchy.priority)}</p>
+        <p class="domain-meta">${t("addendumCard.meta", {total, status:statusLabel(status), best, priority:escapeHTML(round.hierarchy.priority)})}</p>
       </div>
       <div class="activity-status">
-        <span class="status-pill">${status}</span>
-        <button class="act route-button" data-route="${addendumRoundRoute(round)}" type="button">${rp.attempts ? "Continue" : "Start"}</button>
+        <span class="status-pill">${statusLabel(status)}</span>
+        <button class="act route-button" data-route="${addendumRoundRoute(round)}" type="button">${rp.attempts ? t("addendumCard.continue") : t("addendumCard.start")}</button>
       </div>
     </article>`;
   }
@@ -645,19 +756,19 @@
     const sets = guideCardSets(number, acts);
     const domainTotal = sets.reduce((sum, set) => sum + set.cardCount, 0);
     const domainFirst = acts.find(activity => activity.module === "hub-card-engine");
-    return `<section class="page-section guide-browser" aria-label="Master Study Guide hierarchy">
+    return `<section class="page-section guide-browser" aria-label="${t("guide.hierarchyLabel")}">
       <div class="guide-browser-head">
         <div>
-          <p class="objective-label">Master Study Guide hierarchy · ${guide.weight}</p>
-          <h3>Browse by task and subtask</h3>
-          <p class="muted">Target one exact section of the guide, or launch the broader domain-level review activity.</p>
+          <p class="objective-label">${t("guide.hierarchyEyebrow", {weight:guide.weight})}</p>
+          <h3>${t("guide.browseHeading")}</h3>
+          <p class="muted">${t("guide.browseIntro")}</p>
         </div>
-        ${domainFirst ? `<button class="act ghost route-button" data-route="#/activity/${domainFirst.id}" type="button">Domain ${number} mixed review</button>` : ""}
+        ${domainFirst ? `<button class="act ghost route-button" data-route="#/activity/${domainFirst.id}" type="button">${t("guide.mixedReview", {n:number})}</button>` : ""}
       </div>
       <div class="guide-task-list">
         ${guide.tasks.map(task => renderGuideTask(number, task, sets, acts)).join("")}
       </div>
-      <p class="domain-meta">${sets.length} targeted card sets · ${domainTotal} cards across Domain ${number}</p>
+      <p class="domain-meta">${t("guide.setsAcrossDomain", {sets:sets.length, cards:domainTotal, n:number})}</p>
     </section>`;
   }
 
@@ -667,11 +778,11 @@
     const taskActivity = acts.find(activity => activity.module === "hub-card-engine" && (activity.taskStatement || "").includes("Task " + task.taskCode));
     return `<details class="guide-task" open>
       <summary>
-        <span><strong>Task ${task.taskCode}</strong> ${escapeHTML(task.taskTitle)}</span>
-        <b>${taskSets.length} sets · ${taskCards} cards</b>
+        <span><strong>${t("nav.task")} ${task.taskCode}</strong> ${escapeHTML(task.taskTitle)}</span>
+        <b>${t("guide.setsCards", {sets:taskSets.length, cards:taskCards})}</b>
       </summary>
       <div class="guide-task-actions">
-        ${taskActivity ? `<button class="act ghost route-button" data-route="#/activity/${taskActivity.id}" type="button">Task ${task.taskCode} combined review</button>` : ""}
+        ${taskActivity ? `<button class="act ghost route-button" data-route="#/activity/${taskActivity.id}" type="button">${t("guide.taskCombinedReview", {code:task.taskCode})}</button>` : ""}
       </div>
       <div class="guide-subtasks">
         ${task.subtasks.map(subtask => renderGuideSubtask(number, task, subtask, taskSets)).join("")}
@@ -684,11 +795,11 @@
     const cards = subtaskSets.reduce((sum, set) => sum + set.cardCount, 0);
     return `<section class="guide-subtask">
       <header>
-        <p class="objective-label">Subtask ${subtask.subtaskId}</p>
+        <p class="objective-label">${t("guide.subtaskLabel", {id:subtask.subtaskId})}</p>
         <h4>${escapeHTML(subtask.subtaskTitle)}</h4>
-        <span>${subtaskSets.length ? `${subtaskSets.length} sets · ${cards} cards` : "No targeted card set yet"}</span>
+        <span>${subtaskSets.length ? t("guide.setsCards", {sets:subtaskSets.length, cards}) : t("guide.noTargetedSet")}</span>
       </header>
-      ${subtaskSets.length ? `<div class="guide-cardsets">${subtaskSets.map(renderGuideCardSet).join("")}</div>` : `<p class="muted">Covered only in broader review or exam content for now.</p>`}
+      ${subtaskSets.length ? `<div class="guide-cardsets">${subtaskSets.map(renderGuideCardSet).join("")}</div>` : `<p class="muted">${t("guide.coveredElsewhere")}</p>`}
     </section>`;
   }
 
@@ -701,9 +812,9 @@
         <p class="objective-label">${escapeHTML(set.cardType)} · ${escapeHTML(set.difficulty)}</p>
         <h5>${escapeHTML(set.title)}</h5>
         <p>${escapeHTML(set.sourceSection)}</p>
-        <p class="domain-meta">${set.cardCount} cards · ${status} · Best ${best}%</p>
+        <p class="domain-meta">${t("guide.setMeta", {count:set.cardCount, status:statusLabel(status), best})}</p>
       </div>
-      <button class="act route-button" data-route="#/activity/${set.activityId}/${set.roundId}" type="button">Open set</button>
+      <button class="act route-button" data-route="#/activity/${set.activityId}/${set.roundId}" type="button">${t("guide.openSet")}</button>
     </article>`;
   }
 
@@ -721,8 +832,8 @@
           title:round.title,
           taskId:h.taskId,
           subtaskId:h.subtaskId,
-          cardType:h.cardType || "Mixed review",
-          difficulty:h.difficulty || activity.difficulty || "Foundational",
+          cardType:h.cardType || t("guide.mixedReviewCardType"),
+          difficulty:h.difficulty || activity.difficulty || t("enum.difficultyFoundational"),
           sourceSection:h.sourceSection || "",
           cardCount:totalForRound(round)
         });
@@ -743,12 +854,12 @@
         <p class="objective-label">${compressObjectiveCodes(activity.objectiveCodes)} · ${activity.activityType}</p>
         <h4>${activity.title}</h4>
         <p>${rec.reason || activity.shortDescription}</p>
-        <p class="domain-meta">Most recent ${stats.latestPercent || 0}% · Best ${stats.bestPercent}%</p>
+        <p class="domain-meta">${t("reinforcementCard.meta", {latest:stats.latestPercent || 0, best:stats.bestPercent})}</p>
       </div>
       <div class="activity-status">
-        <span class="status-pill">${stats.status}</span>
-        ${rec.urgent ? `<span>Weak area</span>` : ""}
-        <button class="act route-button" data-route="#/activity/${activity.id}" type="button">${stats.completed ? "Review" : "Start"}</button>
+        <span class="status-pill">${statusLabel(stats.status)}</span>
+        ${rec.urgent ? `<span>${t("reinforcementCard.weakArea")}</span>` : ""}
+        <button class="act route-button" data-route="#/activity/${activity.id}" type="button">${stats.completed ? t("reinforcementCard.review") : t("reinforcementCard.start")}</button>
       </div>
     </article>`;
   }
@@ -761,7 +872,7 @@
     });
     return Object.entries(groups).map(([task, list]) => `
       <section class="task-group">
-        <h3>${task}</h3>
+        <h3>${taskStatementLabel(task)}</h3>
         <div class="activity-list">${list.map(activityCard).join("")}</div>
       </section>
     `).join("");
@@ -774,12 +885,12 @@
         <p class="objective-label">${compressObjectiveCodes(activity.objectiveCodes)} · ${activity.activityType}</p>
         <h4>${activity.title}</h4>
         <p>${activity.shortDescription}</p>
-        <p class="domain-meta">${activity.rounds.length} rounds · ${countCards(activity)} cards/questions · ${activity.estimatedTime} · ${activity.difficulty}</p>
+        <p class="domain-meta">${t("activityCard.meta", {rounds:activity.rounds.length, cards:countCards(activity), time:activity.estimatedTime, difficulty:activity.difficulty})}</p>
       </div>
       <div class="activity-status">
-        <span class="status-pill">${stats.status}</span>
-        <span>Best ${stats.bestPercent}%</span>
-        <button class="act route-button" data-route="#/activity/${activity.id}" type="button">Open</button>
+        <span class="status-pill">${statusLabel(stats.status)}</span>
+        <span>${t("groupedActivities.bestPercent", {pct:stats.bestPercent})}</span>
+        <button class="act route-button" data-route="#/activity/${activity.id}" type="button">${t("activityCard.open")}</button>
       </div>
     </article>`;
   }
@@ -810,20 +921,20 @@
       <section class="activity-shell">
         <header class="activity-header">
           <div>
-            <p class="objective-label">Domain ${activity.domain} · ${activity.taskStatement} · ${compressObjectiveCodes(round.objectiveCodes || activity.objectiveCodes)}</p>
+            <p class="objective-label">${t("activity.eyebrow", {domain:activity.domain, task:taskStatementLabel(activity.taskStatement), objectives:compressObjectiveCodes(round.objectiveCodes || activity.objectiveCodes)})}</p>
             <h2>${activity.title}</h2>
             <p>${activity.shortDescription}</p>
           </div>
           <div class="activity-links">
-            <button class="link-button route-button" data-route="#/home" type="button">Dashboard</button>
-            <button class="link-button route-button" data-route="${inAddendum ? addendum.overviewRoute : "#/domain/" + activity.domain}" type="button">${inAddendum ? "Back to addendum" : "Back to domain"}</button>
+            <button class="link-button route-button" data-route="#/home" type="button">${t("activity.dashboard")}</button>
+            <button class="link-button route-button" data-route="${inAddendum ? addendum.overviewRoute : "#/domain/" + activity.domain}" type="button">${inAddendum ? t("activity.backToAddendum") : t("activity.backToDomain")}</button>
           </div>
         </header>
-        <nav class="activity-nav" aria-label="Activity sequence">
-          ${nav.prev ? `<button class="act ghost route-button" data-route="${inAddendum ? addendumRoundRoute(nav.prev) : "#/activity/" + nav.prev.id}" type="button">${inAddendum ? "Previous addendum set" : "Previous activity"}</button>` : ""}
-          ${nav.next ? `<button class="act ghost route-button" data-route="${inAddendum ? addendumRoundRoute(nav.next) : "#/activity/" + nav.next.id}" type="button">${inAddendum ? "Next addendum set" : "Next activity"}</button>` : ""}
+        <nav class="activity-nav" aria-label="${t("activity.sequenceLabel")}">
+          ${nav.prev ? `<button class="act ghost route-button" data-route="${inAddendum ? addendumRoundRoute(nav.prev) : "#/activity/" + nav.prev.id}" type="button">${inAddendum ? t("activity.prevAddendumSet") : t("activity.prevActivity")}</button>` : ""}
+          ${nav.next ? `<button class="act ghost route-button" data-route="${inAddendum ? addendumRoundRoute(nav.next) : "#/activity/" + nav.next.id}" type="button">${inAddendum ? t("activity.nextAddendumSet") : t("activity.nextActivity")}</button>` : ""}
         </nav>
-        <nav class="rounds" id="roundTabs" role="tablist" aria-label="Rounds">${activity.rounds.map(roundTab).join("")}</nav>
+        <nav class="rounds" id="roundTabs" role="tablist" aria-label="${t("activity.roundsLabel")}">${activity.rounds.map(roundTab).join("")}</nav>
         <section class="round-panel">
           <div class="round-title-row">
             <div>
@@ -836,16 +947,16 @@
           <p class="source-note" id="sourceNote"></p>
         </section>
         <div class="bank-head">
-          <h3>Loose cards</h3>
-          <span class="hint">Click a card, then click a slot. Dragging works too. Click a placed card to send it back.</span>
+          <h3>${t("activity.looseCards")}</h3>
+          <span class="hint">${t("activity.hint")}</span>
         </div>
-        <div class="bank" id="bank" aria-label="Unplaced cards"></div>
+        <div class="bank" id="bank" aria-label="${t("activity.unplacedCardsLabel")}"></div>
         <div class="board" id="board"></div>
         <div class="controls">
-          <button class="act" id="btnCheck" type="button">${round.checkLabel || "Check answers"}</button>
-          <button class="act ghost" id="btnShuffle" type="button">Shuffle loose cards</button>
-          <button class="act ghost" id="btnClear" type="button">Clear board</button>
-          <button class="act ghost" id="btnReveal" type="button">Reveal answers</button>
+          <button class="act" id="btnCheck" type="button">${round.checkLabel || t("activity.checkAnswers")}</button>
+          <button class="act ghost" id="btnShuffle" type="button">${t("activity.shuffleLooseCards")}</button>
+          <button class="act ghost" id="btnClear" type="button">${t("activity.clearBoard")}</button>
+          <button class="act ghost" id="btnReveal" type="button">${t("activity.revealAnswers")}</button>
         </div>
         <section class="feedback" aria-live="polite">
           <p class="verdict" id="verdict"></p>
@@ -860,7 +971,7 @@
 
   function roundTab(round){
     const rp = roundProgress(activeActivity.id, round.id);
-    return `<button class="round-tab ${rp.mastered ? "is-mastered" : ""}" type="button" role="tab" data-round="${round.id}" aria-selected="${round.id === activeRoundId}">${round.title} <span class="tab-count">${totalForRound(round)} cards</span></button>`;
+    return `<button class="round-tab ${rp.mastered ? "is-mastered" : ""}" type="button" role="tab" data-round="${round.id}" aria-selected="${round.id === activeRoundId}">${round.title} <span class="tab-count">${t("nav.cardsCount", {n:totalForRound(round)})}</span></button>`;
   }
 
   function renderRoundBoard(){
@@ -898,7 +1009,7 @@
         footnote:round.footnote,
         sourceNote:round.sourceNote,
         destinations:round.destinations,
-        slotTypes:round.slotTypes || [{key:"answer", label:round.slotLabel || "Answer"}],
+        slotTypes:round.slotTypes || [{key:"answer", label:round.slotLabel || t("round.defaultAnswerLabel")}],
         capacity:round.capacity || (round.activity === "sort" ? "many" : "one"),
         cards:round.cards.map(card => Object.assign({}, card, {answers:Array.isArray(card.answers) ? card.answers : [card.answer]}))
       };
@@ -908,7 +1019,7 @@
         intro:round.intro || "",
         footnote:round.footnote,
         destinations:round.targets,
-        slotTypes:[{key:"answer", label:"Drop here"}],
+        slotTypes:[{key:"answer", label:t("round.dropHere")}],
         capacity:"many",
         cards:round.items.map(item => ({
           id:item.id,
@@ -919,7 +1030,7 @@
         }))
       };
     }
-    const types = round.slotTypes || [{key:"answer", label:"Answer"}];
+    const types = round.slotTypes || [{key:"answer", label:t("round.defaultAnswerLabel")}];
     const cards = [];
     round.concepts.forEach(concept => {
       types.forEach(type => {
@@ -1028,8 +1139,8 @@
       item.dataset.cardId = card.id;
       item.innerHTML = `<div class="tf-statement"><span>${String(index + 1).padStart(2,"0")}</span><p>${escapeHTML(card.text)}</p></div>
         <div class="tf-actions" role="radiogroup" aria-label="${escapeHTML(card.text)}">
-          <button class="tf-choice" type="button" data-value="true">True</button>
-          <button class="tf-choice" type="button" data-value="false">False</button>
+          <button class="tf-choice" type="button" data-value="true">${t("tf.true")}</button>
+          <button class="tf-choice" type="button" data-value="false">${t("tf.false")}</button>
         </div>
         <p class="tf-reason" hidden></p>`;
       list.appendChild(item);
@@ -1170,11 +1281,11 @@
       const mark = slot.parentElement.querySelector(".mark");
       if(wrong.length){
         slot.classList.add("is-wrong");
-        mark.textContent = wrong.length + " misplaced; move and try again";
+        mark.textContent = t("board.misplaced", {n:wrong.length});
         mark.className = "mark no";
       }else{
         slot.classList.add("is-correct");
-        mark.textContent = cards.length === 1 ? "Correct" : cards.length + " correct";
+        mark.textContent = cards.length === 1 ? t("board.correctSingle") : t("board.correctPlural", {n:cards.length});
         mark.className = "mark ok";
       }
     });
@@ -1195,13 +1306,13 @@
     saveProgress();
     document.getElementById("roundProgress").textContent = progressText(activeActivity, currentRound());
     const verdict = document.getElementById("verdict");
-    if(!filled) verdict.textContent = "Place some cards first, then check.";
+    if(!filled) verdict.textContent = t("board.placeCardsFirst");
     else if(mastered){
-      verdict.textContent = "All " + total + " correct. This round is mastered.";
+      verdict.textContent = t("board.allCorrectMastered", {total});
       verdict.className = "verdict win";
       showCompletionActions();
-    }else if(correct === total) verdict.textContent = "All answers are correct, but this attempt used Reveal, so it is not counted as mastered.";
-    else verdict.textContent = correct + " of " + total + " correct. Incorrect cards stay movable.";
+    }else if(correct === total) verdict.textContent = t("board.correctButRevealed");
+    else verdict.textContent = t("board.partialCorrect", {correct, total});
     renderSidebar();
   }
 
@@ -1246,13 +1357,13 @@
     saveProgress();
     document.getElementById("roundProgress").textContent = progressText(activeActivity, currentRound());
     const verdict = document.getElementById("verdict");
-    if(!answered) verdict.textContent = "Choose True or False for at least one statement first.";
+    if(!answered) verdict.textContent = t("tf.chooseFirst");
     else if(mastered){
-      verdict.textContent = "All " + total + " statements correct. This round is mastered.";
+      verdict.textContent = t("tf.allStatementsCorrect", {total});
       verdict.className = "verdict win";
       showCompletionActions();
-    }else if(correct === total) verdict.textContent = "All answers are correct, but this attempt used Reveal, so it is not counted as mastered.";
-    else verdict.textContent = correct + " of " + total + " correct. Review the source reasons and retry missed statements.";
+    }else if(correct === total) verdict.textContent = t("board.correctButRevealed");
+    else verdict.textContent = t("tf.partialCorrect", {correct, total});
     renderSidebar();
   }
 
@@ -1274,7 +1385,7 @@
     rp.total = norm.cards.length;
     saveProgress();
     updateTally();
-    document.getElementById("verdict").textContent = "Answers revealed. This attempt will not count as mastered.";
+    document.getElementById("verdict").textContent = t("board.answersRevealed");
   }
 
   function revealAnswers(norm){
@@ -1288,7 +1399,7 @@
     document.querySelectorAll(".slot").forEach(slot => {
       slot.classList.add("is-correct");
       const mark = slot.parentElement.querySelector(".mark");
-      mark.textContent = "Answer";
+      mark.textContent = t("round.defaultAnswerLabel");
       mark.className = "mark ok";
     });
     const rp = roundProgress(activeActivity.id, activeRoundId);
@@ -1297,7 +1408,7 @@
     saveProgress();
     updateTally();
     refreshBankEmpty();
-    document.getElementById("verdict").textContent = "Answers revealed. This attempt will not count as mastered.";
+    document.getElementById("verdict").textContent = t("board.answersRevealed");
   }
 
   function showCompletionActions(){
@@ -1307,10 +1418,10 @@
     const inAddendum = isAddendumActivity(activeActivity);
     box.hidden = false;
     box.innerHTML = `${callout ? `<div class="exam-tip"><h3>${escapeHTML(callout.title)}</h3><p>${escapeHTML(callout.text)}</p></div>` : ""}
-      <h3>Next step</h3>
-      <button class="act ghost" id="retryRound" type="button">Retry</button>
-      ${nextRound ? `<button class="act" id="nextRound" type="button">Continue to next round</button>` : `<button class="act" id="nextActivity" type="button">Continue to next activity</button>`}
-      <button class="act ghost route-button" data-route="${inAddendum ? addendum.overviewRoute : "#/domain/" + activeActivity.domain}" type="button">${inAddendum ? "Return to addendum" : "Return to domain"}</button>`;
+      <h3>${t("completion.nextStep")}</h3>
+      <button class="act ghost" id="retryRound" type="button">${t("completion.retry")}</button>
+      ${nextRound ? `<button class="act" id="nextRound" type="button">${t("completion.nextRound")}</button>` : `<button class="act" id="nextActivity" type="button">${t("completion.nextActivity")}</button>`}
+      <button class="act ghost route-button" data-route="${inAddendum ? addendum.overviewRoute : "#/domain/" + activeActivity.domain}" type="button">${inAddendum ? t("completion.returnToAddendum") : t("completion.returnToDomain")}</button>`;
     document.getElementById("retryRound").addEventListener("click", () => renderActivity(activeActivity.id, activeRoundId));
     const next = document.getElementById("nextRound") || document.getElementById("nextActivity");
     next.addEventListener("click", () => {
@@ -1401,7 +1512,7 @@
     if(!has && !empty){
       const p = document.createElement("p");
       p.className = "bank-empty";
-      p.textContent = "All cards placed. Check your answers below.";
+      p.textContent = t("board.allPlaced");
       bank.appendChild(p);
     }
     if(has && empty) empty.remove();
@@ -1433,7 +1544,7 @@
 
   function progressText(activity, round){
     const rp = roundProgress(activity.id, round.id);
-    return "Best " + (rp.bestScore || 0) + " / " + totalForRound(round) + (rp.mastered ? " · mastered" : rp.revealed ? " · revealed" : "");
+    return t("progress.bestOf", {best:rp.bestScore || 0, total:totalForRound(round)}) + (rp.mastered ? t("progress.masteredSuffix") : rp.revealed ? t("progress.revealedSuffix") : "");
   }
 
   function nextRoundId(){
@@ -1521,28 +1632,28 @@
       <section class="activity-shell reinforcement-shell">
         <header class="activity-header">
           <div>
-            <p class="objective-label">Domain 1 · ${unit.taskStatement} · ${unit.objectives.join(", ")}</p>
+            <p class="objective-label">${t("activity.eyebrow", {domain:1, task:taskStatementLabel(unit.taskStatement), objectives:unit.objectives.join(", ")})}</p>
             <h2>${unit.title}</h2>
             <p>${unit.reason}</p>
           </div>
           <div class="activity-links">
-            <button class="link-button route-button" data-route="#/home" type="button">Dashboard</button>
-            <button class="link-button route-button" data-route="#/domain/1" type="button">Back to domain</button>
+            <button class="link-button route-button" data-route="#/home" type="button">${t("activity.dashboard")}</button>
+            <button class="link-button route-button" data-route="#/domain/1" type="button">${t("activity.backToDomain")}</button>
           </div>
         </header>
         <section class="summary-grid">
-          <div class="summary-card"><span>Status</span><b>${stats.status}</b></div>
-          <div class="summary-card"><span>Best checkpoint</span><b>${stats.bestPercent}%</b></div>
-          <div class="summary-card"><span>Practice items</span><b>${(unit.practice || []).length}</b></div>
-          <div class="summary-card"><span>Checkpoint</span><b>${(unit.checkpoint || []).length}</b></div>
+          <div class="summary-card"><span>${t("reinforce.status")}</span><b>${statusLabel(stats.status)}</b></div>
+          <div class="summary-card"><span>${t("reinforce.bestCheckpoint")}</span><b>${stats.bestPercent}%</b></div>
+          <div class="summary-card"><span>${t("reinforce.practiceItems")}</span><b>${(unit.practice || []).length}</b></div>
+          <div class="summary-card"><span>${t("reinforce.checkpoint")}</span><b>${(unit.checkpoint || []).length}</b></div>
         </section>
         ${renderRapidReview(unit)}
         ${renderGuidedExamples(unit)}
         ${renderPractice(unit, rp)}
         ${renderCheckpoint(unit, rp)}
         <div class="controls">
-          <button class="act ghost route-button" data-route="#/activity/${unit.relatedActivityId}" type="button">Open related study activity</button>
-          <button class="act ghost" id="repeatUnit" type="button">Repeat unit</button>
+          <button class="act ghost route-button" data-route="#/activity/${unit.relatedActivityId}" type="button">${t("reinforce.openRelated")}</button>
+          <button class="act ghost" id="repeatUnit" type="button">${t("reinforce.repeatUnit")}</button>
         </div>
       </section>
     `;
@@ -1562,15 +1673,15 @@
   function renderRapidReview(unit){
     const review = unit.rapidReview;
     return `<section class="reinforce-section">
-      <p class="objective-label">Stage 1 · Rapid review</p>
-      <h3>Deciding clues</h3>
+      <p class="objective-label">${t("reinforce.stage1")}</p>
+      <h3>${t("reinforce.decidingClues")}</h3>
       <p>${escapeHTML(review.summary)}</p>
       <div class="comparison-table" role="table">
         ${review.table.map(row => `<div role="row"><b role="cell">${escapeHTML(row[0])}</b><span role="cell">${escapeHTML(row[1])}</span><em role="cell">${escapeHTML(row[2])}</em></div>`).join("")}
       </div>
       <div class="reinforce-grid">
-        <div><h4>Clues</h4><ul>${review.clues.map(item => `<li>${escapeHTML(item)}</li>`).join("")}</ul></div>
-        <div><h4>Common traps</h4><ul>${review.traps.map(item => `<li>${escapeHTML(item)}</li>`).join("")}</ul></div>
+        <div><h4>${t("reinforce.clues")}</h4><ul>${review.clues.map(item => `<li>${escapeHTML(item)}</li>`).join("")}</ul></div>
+        <div><h4>${t("reinforce.commonTraps")}</h4><ul>${review.traps.map(item => `<li>${escapeHTML(item)}</li>`).join("")}</ul></div>
       </div>
       <div class="mini-comparisons">${(review.comparisons || []).map(row => `<p><strong>${escapeHTML(row[0])}:</strong> ${escapeHTML(row[1])}</p>`).join("")}</div>
     </section>`;
@@ -1579,15 +1690,15 @@
   function renderGuidedExamples(unit){
     if(!unit.guidedExamples.length) return "";
     return `<section class="reinforce-section">
-      <p class="objective-label">Stage 2 · Guided examples</p>
-      <h3>Reasoning made visible</h3>
+      <p class="objective-label">${t("reinforce.stage2")}</p>
+      <h3>${t("reinforce.reasoningVisible")}</h3>
       <div class="guided-grid">${unit.guidedExamples.map(example => `<article class="guided-card">
         <h4>${escapeHTML(example.answer)}</h4>
         <p>${escapeHTML(example.scenario)}</p>
-        <p><strong>Requirement:</strong> ${escapeHTML(example.workload)}</p>
-        <p><strong>Words that matter:</strong> ${escapeHTML(example.clues)}</p>
-        <p><strong>Why this fits:</strong> ${escapeHTML(example.whyCorrect)}</p>
-        <p><strong>Closest distractor:</strong> ${escapeHTML(example.closestAlternative)}. ${escapeHTML(example.whyAlternativeFails)}</p>
+        <p><strong>${t("reinforce.requirement")}</strong> ${escapeHTML(example.workload)}</p>
+        <p><strong>${t("reinforce.wordsThatMatter")}</strong> ${escapeHTML(example.clues)}</p>
+        <p><strong>${t("reinforce.whyThisFits")}</strong> ${escapeHTML(example.whyCorrect)}</p>
+        <p><strong>${t("reinforce.closestDistractor")}</strong> ${escapeHTML(example.closestAlternative)}. ${escapeHTML(example.whyAlternativeFails)}</p>
       </article>`).join("")}</div>
     </section>`;
   }
@@ -1595,8 +1706,8 @@
   function renderPractice(unit, rp){
     if(!unit.practice.length) return "";
     return `<section class="reinforce-section">
-      <p class="objective-label">Stage 3 · Active practice</p>
-      <h3>Short scenarios with immediate feedback</h3>
+      <p class="objective-label">${t("reinforce.stage3")}</p>
+      <h3>${t("reinforce.shortScenarios")}</h3>
       <div class="practice-list">${unit.practice.map((question, index) => renderPracticeItem(question, index, rp.practiceAnswers[question.id])).join("")}</div>
     </section>`;
   }
@@ -1607,19 +1718,19 @@
     const correct = answered && isCorrectSelection(question, selected);
     const inputType = question.type === "multiple-response" ? "checkbox" : "radio";
     return `<article class="practice-card ${answered ? correct ? "is-correct" : "is-wrong" : ""}" data-question-id="${question.id}">
-      <p class="objective-label">${index + 1}. Objective ${question.objective}${question.type === "multiple-response" ? " · Select " + question.correctAnswers.length : ""}</p>
+      <p class="objective-label">${t("reinforce.objectiveLabel", {n:index + 1, objective:question.objective})}${question.type === "multiple-response" ? t("reinforce.selectN", {n:question.correctAnswers.length}) : ""}</p>
       <h4>${escapeHTML(question.stem)}</h4>
       <form class="options-form">${question.options.map(option => `<label class="option-row"><input type="${inputType}" name="practice-${question.id}" value="${option.id}" ${selected.includes(option.id) ? "checked" : ""}> <span>${escapeHTML(option.text)}</span></label>`).join("")}</form>
-      <button class="act practice-submit" type="button">${answered ? "Update answer" : "Submit"}</button>
+      <button class="act practice-submit" type="button">${answered ? t("reinforce.updateAnswer") : t("reinforce.submit")}</button>
       <div class="practice-feedback" ${answered ? "" : "hidden"}>${answered ? renderImmediateFeedback(question, selected, correct) : ""}</div>
     </article>`;
   }
 
   function renderImmediateFeedback(question, selected, correct){
-    return `<p class="${correct ? "verdict win" : "verdict"}">${correct ? "Correct." : "Not quite."} ${escapeHTML(question.explanation)}</p>
-      <p><strong>Deciding clue:</strong> ${escapeHTML(question.decidingClue)}</p>
-      <p><strong>Closest distractor:</strong> ${escapeHTML(question.closestDistractor)}. ${escapeHTML(question.whyClosestDistractorIsWrong)}</p>
-      <p class="domain-meta">Selected: ${escapeHTML(selected.join(", ") || "none")} · Correct: ${escapeHTML(question.correctAnswers.join(", "))} · ${escapeHTML(question.sourceReference)}</p>`;
+    return `<p class="${correct ? "verdict win" : "verdict"}">${correct ? t("reinforce.correct") : t("reinforce.notQuite")} ${escapeHTML(question.explanation)}</p>
+      <p><strong>${t("reinforce.decidingClueLabel")}</strong> ${escapeHTML(question.decidingClue)}</p>
+      <p><strong>${t("reinforce.closestDistractor")}</strong> ${escapeHTML(question.closestDistractor)}. ${escapeHTML(question.whyClosestDistractorIsWrong)}</p>
+      <p class="domain-meta">${t("reinforce.selectedCorrectSource", {selected:escapeHTML(selected.join(", ") || t("reinforce.none")), correct:escapeHTML(question.correctAnswers.join(", ")), source:escapeHTML(question.sourceReference)})}</p>`;
   }
 
   function wirePractice(unit, activity){
@@ -1628,7 +1739,7 @@
         const card = button.closest(".practice-card");
         const question = findReinforcementQuestion(unit, card.dataset.questionId);
         const selected = Array.from(card.querySelectorAll("input:checked")).map(input => input.value).sort();
-        if(!selected.length){ card.querySelector(".practice-feedback").hidden = false; card.querySelector(".practice-feedback").innerHTML = `<p class="verdict">Choose an answer first.</p>`; return; }
+        if(!selected.length){ card.querySelector(".practice-feedback").hidden = false; card.querySelector(".practice-feedback").innerHTML = `<p class="verdict">${t("reinforce.chooseAnswerFirst")}</p>`; return; }
         const correct = isCorrectSelection(question, selected);
         const rp = reinforcementProgress(activity.id);
         rp.practiceAnswers[question.id] = {selected, correct, answeredAt:new Date().toISOString()};
@@ -1642,10 +1753,10 @@
   function renderCheckpoint(unit, rp){
     const session = rp.checkpointSession;
     if(!session) return `<section class="reinforce-section">
-      <p class="objective-label">Stage 4 · Mastery checkpoint</p>
-      <h3>${unit.id === "domain1-reinforcement-checkpoint" ? "Mixed weak-area checkpoint" : "Checkpoint"}</h3>
-      <p class="muted">${unit.immediateCheckpointFeedback ? "Answer one question at a time. Feedback appears after each submission, and incorrect questions return at the end." : "Answer one question at a time. Correctness and explanations appear after the first pass is complete."}</p>
-      <button class="act" id="startCheckpoint" type="button">Start checkpoint</button>
+      <p class="objective-label">${t("reinforce.stage4")}</p>
+      <h3>${unit.id === "domain1-reinforcement-checkpoint" ? t("reinforce.mixedCheckpointTitle") : t("reinforce.checkpoint")}</h3>
+      <p class="muted">${unit.immediateCheckpointFeedback ? t("reinforce.immediateFeedbackDesc") : t("reinforce.delayedFeedbackDesc")}</p>
+      <button class="act" id="startCheckpoint" type="button">${t("reinforce.startCheckpoint")}</button>
     </section>`;
     if(session.complete) return renderCheckpointResult(unit, rp, session);
     const ids = session.phase === "retry" ? session.retryIds : session.questionIds;
@@ -1654,13 +1765,13 @@
     const answered = !!session.submitted[question.id];
     const showFeedback = answered && unit.immediateCheckpointFeedback;
     return `<section class="reinforce-section checkpoint-panel">
-      <p class="objective-label">Stage 4 · Mastery checkpoint · ${session.phase === "retry" ? "Retry" : "First pass"}</p>
-      <h3>Question ${session.currentIndex + 1} of ${ids.length}</h3>
+      <p class="objective-label">${t("reinforce.stage4Phase", {phase:session.phase === "retry" ? t("reinforce.retry") : t("reinforce.firstPass")})}</p>
+      <h3>${t("reinforce.questionOf", {n:session.currentIndex + 1, total:ids.length})}</h3>
       <p class="question-stem">${escapeHTML(question.stem)}</p>
       <form class="options-form">${renderReinforcementOptions(question, selected, "checkpoint-" + question.id)}</form>
       <div class="checkpoint-actions">
-        <button class="act" id="submitCheckpointAnswer" type="button">${answered ? session.currentIndex === ids.length - 1 ? "Continue" : "Next" : "Submit answer"}</button>
-        <button class="act ghost" id="restartCheckpoint" type="button">Restart checkpoint</button>
+        <button class="act" id="submitCheckpointAnswer" type="button">${answered ? session.currentIndex === ids.length - 1 ? t("reinforce.continue") : t("reinforce.next") : t("reinforce.submitAnswer")}</button>
+        <button class="act ghost" id="restartCheckpoint" type="button">${t("reinforce.restartCheckpoint")}</button>
       </div>
       <div class="practice-feedback" ${showFeedback ? "" : "hidden"}>${showFeedback ? renderImmediateFeedback(question, selected, isCorrectSelection(question, selected)) : ""}</div>
     </section>`;
@@ -1668,7 +1779,7 @@
 
   function renderReinforcementOptions(question, selected, name){
     const inputType = question.type === "multiple-response" ? "checkbox" : "radio";
-    const hint = question.type === "multiple-response" ? `<p class="mrq-hint">Select ${numberWord(question.correctAnswers.length)}.</p>` : "";
+    const hint = question.type === "multiple-response" ? `<p class="mrq-hint">${t("reinforce.selectHint", {word:numberWord(question.correctAnswers.length)})}</p>` : "";
     return hint + question.options.map(option => `<label class="option-row"><input type="${inputType}" name="${name}${inputType === "checkbox" ? "-" + option.id : ""}" value="${option.id}" ${selected.includes(option.id) ? "checked" : ""}> <span>${escapeHTML(option.text)}</span></label>`).join("");
   }
 
@@ -1779,19 +1890,19 @@
   function renderCheckpointResult(unit, rp, session){
     const result = session.result;
     return `<section class="reinforce-section checkpoint-result">
-      <p class="objective-label">Stage 4 · Checkpoint result</p>
-      <h3>${result.correct} / ${result.total} correct · ${result.percent}%</h3>
-      <p class="${result.percent >= (unit.masteryPercent || 85) ? "verdict win" : "verdict"}">${result.percent >= (unit.masteryPercent || 85) ? "Mastery recorded." : "Review again before marking this distinction automatic."}</p>
+      <p class="objective-label">${t("checkpointResult.stage")}</p>
+      <h3>${t("checkpointResult.scoreLine", {correct:result.correct, total:result.total, pct:result.percent})}</h3>
+      <p class="${result.percent >= (unit.masteryPercent || 85) ? "verdict win" : "verdict"}">${result.percent >= (unit.masteryPercent || 85) ? t("checkpointResult.mastered") : t("checkpointResult.reviewAgain")}</p>
       <div class="summary-grid">${Object.entries(result.byObjective).map(([objective, row]) => `<div class="summary-card"><span>${objective}</span><b>${row.correct}/${row.total} · ${percent(row)}%</b></div>`).join("")}</div>
-      ${result.missedQuestionIds.length ? `<h4>Review incorrect first-pass answers</h4>${result.missedQuestionIds.map(id => {
+      ${result.missedQuestionIds.length ? `<h4>${t("checkpointResult.reviewIncorrect")}</h4>${result.missedQuestionIds.map(id => {
         const question = findReinforcementQuestion(unit, id);
         const route = question.linkUnitId || unit.id;
         return `<details class="review-item"><summary>${escapeHTML(question.stem)}</summary>
           ${renderImmediateFeedback(question, (session.firstPassAnswers && session.firstPassAnswers[id]) || session.answers[id] || [], false)}
-          <button class="link-button route-button" data-route="#/activity/${route}" type="button">Open linked reinforcement unit</button>
+          <button class="link-button route-button" data-route="#/activity/${route}" type="button">${t("checkpointResult.openLinked")}</button>
         </details>`;
-      }).join("")}` : `<p class="muted">No incorrect first-pass answers.</p>`}
-      <button class="act" id="finishCheckpoint" type="button">Continue reviewing</button>
+      }).join("")}` : `<p class="muted">${t("checkpointResult.noIncorrect")}</p>`}
+      <button class="act" id="finishCheckpoint" type="button">${t("checkpointResult.continueReviewing")}</button>
     </section>`;
   }
 
@@ -1822,33 +1933,33 @@
     const latest = ec.fullExam.lastResult || (ec.fullExam.attempts || [])[0];
     els.app.innerHTML = `
       <section class="hero-panel">
-        <p class="objective-label">Final Exam Center</p>
-        <h2>Question bank and full simulated exam.</h2>
-        <p>Uses the authoritative master question bank for the study hub. Feedback stays hidden during the full simulation and appears only after submission.</p>
+        <p class="objective-label">${t("examCenter.eyebrow")}</p>
+        <h2>${t("examCenter.heading")}</h2>
+        <p>${t("examCenter.intro")}</p>
         <div class="hero-actions">
-          <button class="act route-button" data-route="#/question-bank" type="button">Open question bank</button>
-          <button class="act ghost route-button" data-route="#/full-exam/start" type="button">Start full exam</button>
+          <button class="act route-button" data-route="#/question-bank" type="button">${t("home.openQuestionBank")}</button>
+          <button class="act ghost route-button" data-route="#/full-exam/start" type="button">${t("examCenter.startFullExam")}</button>
         </div>
       </section>
-      <section class="summary-grid" aria-label="Master question bank summary">
-        <div class="summary-card"><span>Total questions</span><b>${cyuQuestions.length}</b></div>
-        <div class="summary-card"><span>Objectives covered</span><b>${Object.keys(cyuObjectiveCounts()).length}</b></div>
-        <div class="summary-card"><span>Full exam</span><b>${fullExamConfig.questionCount} questions</b></div>
-        <div class="summary-card"><span>Timer</span><b>${fullExamConfig.timeLimitMinutes} minutes</b></div>
+      <section class="summary-grid" aria-label="${t("examCenter.summaryLabel")}">
+        <div class="summary-card"><span>${t("examCenter.totalQuestions")}</span><b>${cyuQuestions.length}</b></div>
+        <div class="summary-card"><span>${t("examCenter.objectivesCovered")}</span><b>${Object.keys(cyuObjectiveCounts()).length}</b></div>
+        <div class="summary-card"><span>${t("examCenter.fullExam")}</span><b>${t("examCenter.nQuestions", {n:fullExamConfig.questionCount})}</b></div>
+        <div class="summary-card"><span>${t("examCenter.timer")}</span><b>${t("examCenter.nMinutes", {n:fullExamConfig.timeLimitMinutes})}</b></div>
       </section>
       <section class="page-section">
-        <h3>Domain coverage</h3>
-        <div class="summary-grid">${Object.entries(domainCounts).map(([domain, count]) => `<div class="summary-card"><span>Domain ${domain}</span><b>${count}</b></div>`).join("")}</div>
+        <h3>${t("examCenter.domainCoverage")}</h3>
+        <div class="summary-grid">${Object.entries(domainCounts).map(([domain, count]) => `<div class="summary-card"><span>${t("domainCard.label", {n:domain})}</span><b>${count}</b></div>`).join("")}</div>
       </section>
       <section class="two-col">
         <div class="page-section">
-          <h3>Question types</h3>
+          <h3>${t("examCenter.questionTypes")}</h3>
           <div class="badge-row">${Object.entries(typeCounts).map(([type, count]) => `<span class="objective-badge">${escapeHTML(cyuTypeLabel(type))} · ${count}</span>`).join("")}</div>
         </div>
         <div class="page-section">
-          <h3>Latest simulation</h3>
-          ${latest ? `<p class="domain-meta">${latest.correct} / ${latest.total} correct · ${latest.percent}% · ${escapeHTML(latest.completedAt ? new Date(latest.completedAt).toLocaleString() : "Submitted")}</p>
-          <button class="act ghost route-button" data-route="#/full-exam/result/${latest.id}" type="button">Review results</button>` : `<p class="muted">No full simulated exam attempt yet.</p>`}
+          <h3>${t("examCenter.latestSimulation")}</h3>
+          ${latest ? `<p class="domain-meta">${t("examCenter.resultLine", {correct:latest.correct, total:latest.total, pct:latest.percent, date:escapeHTML(latest.completedAt ? new Date(latest.completedAt).toLocaleString() : t("examCenter.submitted"))})}</p>
+          <button class="act ghost route-button" data-route="#/full-exam/result/${latest.id}" type="button">${t("examCenter.reviewResults")}</button>` : `<p class="muted">${t("examCenter.noAttemptYet")}</p>`}
         </div>
       </section>
     `;
@@ -1881,34 +1992,34 @@
     const unseen = cyuQuestions.filter(question => !history[question.id] || !history[question.id].lastSeenDate).length;
     els.app.innerHTML = `
       <section class="page-section">
-        <p class="objective-label">Question Bank</p>
-        <h2>Master Question Bank</h2>
-        <p class="muted">Practice one question at a time. Feedback includes the stored source explanation for each question.</p>
+        <p class="objective-label">${t("home.questionBankLabel")}</p>
+        <h2>${t("home.questionBankTitle")}</h2>
+        <p class="muted">${t("qbank.intro")}</p>
         <div class="hero-actions">
-          <button class="act route-button" data-route="#/question-bank/filter/all" type="button">Review all</button>
-          <button class="act ghost route-button" data-route="#/question-bank/filter/missed" type="button">Missed</button>
-          <button class="act ghost route-button" data-route="#/question-bank/filter/unseen" type="button">Unseen</button>
-          <button class="act ghost route-button" data-route="#/question-bank/filter/mixed" type="button">Mixed 30</button>
+          <button class="act route-button" data-route="#/question-bank/filter/all" type="button">${t("qbank.reviewAll")}</button>
+          <button class="act ghost route-button" data-route="#/question-bank/filter/missed" type="button">${t("qbank.missed")}</button>
+          <button class="act ghost route-button" data-route="#/question-bank/filter/unseen" type="button">${t("qbank.unseen")}</button>
+          <button class="act ghost route-button" data-route="#/question-bank/filter/mixed" type="button">${t("qbank.mixed30")}</button>
         </div>
       </section>
       <section class="summary-grid">
-        <div class="summary-card"><span>Total</span><b>${cyuQuestions.length}</b></div>
-        <div class="summary-card"><span>Missed or unanswered</span><b>${missed}</b></div>
-        <div class="summary-card"><span>Unseen</span><b>${unseen}</b></div>
-        <div class="summary-card"><span>Excluded</span><b>${(cyuBank.excluded || []).length}</b></div>
+        <div class="summary-card"><span>${t("qbank.total")}</span><b>${cyuQuestions.length}</b></div>
+        <div class="summary-card"><span>${t("qbank.missedOrUnanswered")}</span><b>${missed}</b></div>
+        <div class="summary-card"><span>${t("qbank.unseen")}</span><b>${unseen}</b></div>
+        <div class="summary-card"><span>${t("qbank.excluded")}</span><b>${(cyuBank.excluded || []).length}</b></div>
       </section>
       <section class="page-section">
-        <h3>Browse by domain</h3>
+        <h3>${t("qbank.browseByDomain")}</h3>
         <div class="activity-list">${Object.entries(domainCounts).map(([domain, count]) => `<article class="activity-card">
-          <div><p class="objective-label">Domain ${domain}</p><h4>${escapeHTML(domainTitle(Number(domain)))}</h4><p class="domain-meta">${count} questions</p></div>
-          <button class="act route-button" data-route="#/question-bank/domain/${domain}" type="button">Practice</button>
+          <div><p class="objective-label">${t("domainCard.label", {n:domain})}</p><h4>${escapeHTML(domainTitle(Number(domain)))}</h4><p class="domain-meta">${t("examCenter.nQuestions", {n:count})}</p></div>
+          <button class="act route-button" data-route="#/question-bank/domain/${domain}" type="button">${t("qbank.practice")}</button>
         </article>`).join("")}</div>
       </section>
       <section class="page-section">
-        <h3>Browse by objective</h3>
+        <h3>${t("qbank.browseByObjective")}</h3>
         <div class="activity-list">${Object.entries(objectiveCounts).map(([objective, count]) => `<article class="activity-card">
-          <div><p class="objective-label">${escapeHTML(objective)}</p><h4>${escapeHTML(objectiveTitle(objective))}</h4><p class="domain-meta">${count} question${count === 1 ? "" : "s"}</p></div>
-          <button class="act ghost route-button" data-route="#/question-bank/objective/${encodeURIComponent(objective)}" type="button">Practice</button>
+          <div><p class="objective-label">${escapeHTML(objective)}</p><h4>${escapeHTML(objectiveTitle(objective))}</h4><p class="domain-meta">${t("qbank.nQuestionsPlural", {n:count, s:count === 1 ? "" : t("qbank.pluralSuffix")})}</p></div>
+          <button class="act ghost route-button" data-route="#/question-bank/objective/${encodeURIComponent(objective)}" type="button">${t("qbank.practice")}</button>
         </article>`).join("")}</div>
       </section>
     `;
@@ -1933,21 +2044,21 @@
       <section class="page-section">
         <div class="exam-head">
           <div>
-            <p class="objective-label">Question Bank · ${index + 1} / ${session.questionIds.length}</p>
+            <p class="objective-label">${t("qbank.sessionEyebrow", {n:index + 1, total:session.questionIds.length})}</p>
             <h2>${escapeHTML(question.objective)} · ${escapeHTML(objectiveTitle(question.objective))}</h2>
-            <p class="domain-meta">Domain ${question.domain} · ${escapeHTML(cyuTypeLabel(question.type))} · ${escapeHTML(question.source || "Master Study Guide CYU")}</p>
+            <p class="domain-meta">${t("qbank.domainType", {domain:question.domain, type:escapeHTML(cyuTypeLabel(question.type)), source:escapeHTML(question.source || t("qbank.masterCyuSource"))})}</p>
           </div>
-          <button class="act ghost route-button" data-route="#/question-bank" type="button">Bank home</button>
+          <button class="act ghost route-button" data-route="#/question-bank" type="button">${t("qbank.bankHome")}</button>
         </div>
       </section>
       <section class="page-section">
         ${renderCyuQuestionForm(question, answer, "qb", false, null)}
         <div class="hero-actions">
-          <button class="act" id="checkBankAnswer" type="button">${wasChecked ? "Update check" : "Check answer"}</button>
-          <button class="act ghost" id="prevBankQuestion" type="button" ${index === 0 ? "disabled" : ""}>Previous</button>
+          <button class="act" id="checkBankAnswer" type="button">${wasChecked ? t("qbank.updateCheck") : t("qbank.checkAnswer")}</button>
+          <button class="act ghost" id="prevBankQuestion" type="button" ${index === 0 ? "disabled" : ""}>${t("qbank.previous")}</button>
           ${index === session.questionIds.length - 1
-            ? `<button class="act ghost route-button" data-route="#/question-bank" type="button">Back to bank</button>`
-            : `<button class="act ghost" id="nextBankQuestion" type="button">Next</button>`}
+            ? `<button class="act ghost route-button" data-route="#/question-bank" type="button">${t("qbank.backToBank")}</button>`
+            : `<button class="act ghost" id="nextBankQuestion" type="button">${t("qbank.next")}</button>`}
         </div>
         ${wasChecked ? renderCyuFeedback(question, answer, isCyuCorrect(question, answer)) : ""}
       </section>
@@ -2013,20 +2124,20 @@
     const latest = ec.fullExam.lastResult;
     els.app.innerHTML = `
       <section class="hero-panel">
-        <p class="objective-label">Full Simulated Exam</p>
-        <h2>${fullExamConfig.questionCount} questions · ${fullExamConfig.timeLimitMinutes} minutes.</h2>
-        <p>Randomized from the master question bank using the exam domain weighting. No answer feedback is shown until submission.</p>
+        <p class="objective-label">${t("fullExam.eyebrow")}</p>
+        <h2>${t("fullExam.headingCount", {count:fullExamConfig.questionCount, minutes:fullExamConfig.timeLimitMinutes})}</h2>
+        <p>${t("fullExam.intro")}</p>
         <div class="hero-actions">
-          <button class="act" id="startFullExam" type="button">Start new timed exam</button>
-          ${latest ? `<button class="act ghost route-button" data-route="#/full-exam/result/${latest.id}" type="button">Review latest result</button>` : ""}
+          <button class="act" id="startFullExam" type="button">${t("fullExam.startNew")}</button>
+          ${latest ? `<button class="act ghost route-button" data-route="#/full-exam/result/${latest.id}" type="button">${t("fullExam.reviewLatest")}</button>` : ""}
         </div>
       </section>
       <section class="page-section">
-        <h3>Sampling plan</h3>
-        <div class="summary-grid">${fullExamAllocation().map(row => `<div class="summary-card"><span>Domain ${row.domain}</span><b>${row.count} questions</b></div>`).join("")}</div>
+        <h3>${t("fullExam.samplingPlan")}</h3>
+        <div class="summary-grid">${fullExamAllocation().map(row => `<div class="summary-card"><span>${t("domainCard.label", {n:row.domain})}</span><b>${t("examCenter.nQuestions", {n:row.count})}</b></div>`).join("")}</div>
       </section>
       <section class="page-section">
-        <p class="source-note">This simulator is a readiness tool. It reports percent correct and objective diagnostics, not an official scaled AWS score.</p>
+        <p class="source-note">${t("fullExam.readinessNote")}</p>
       </section>
     `;
     document.getElementById("startFullExam").addEventListener("click", () => {
@@ -2051,9 +2162,9 @@
       <section class="page-section">
         <div class="exam-head">
           <div>
-            <p class="objective-label">Full Simulated Exam · Question ${index + 1} / ${attempt.questionIds.length}</p>
-            <h2>Timed exam attempt</h2>
-            <p class="domain-meta">No feedback is shown until submission.</p>
+            <p class="objective-label">${t("fullExam.questionEyebrow", {n:index + 1, total:attempt.questionIds.length})}</p>
+            <h2>${t("fullExam.timedAttempt")}</h2>
+            <p class="domain-meta">${t("fullExam.noFeedback")}</p>
           </div>
           <div class="exam-timer" id="fullExamTimer" aria-live="polite"></div>
         </div>
@@ -2062,11 +2173,11 @@
       <section class="page-section">
         ${renderCyuQuestionForm(question, answer, "full", true, attempt)}
         <div class="hero-actions">
-          <button class="act ghost" id="prevFullQuestion" type="button" ${index === 0 ? "disabled" : ""}>Previous</button>
-          <button class="act ghost" id="flagFullQuestion" type="button">${attempt.flagged[question.id] ? "Unflag" : "Flag"}</button>
+          <button class="act ghost" id="prevFullQuestion" type="button" ${index === 0 ? "disabled" : ""}>${t("qbank.previous")}</button>
+          <button class="act ghost" id="flagFullQuestion" type="button">${attempt.flagged[question.id] ? t("fullExam.unflag") : t("fullExam.flag")}</button>
           ${index === attempt.questionIds.length - 1
-            ? `<button class="act" id="finishFullExam" type="button">Finish exam</button>`
-            : `<button class="act ghost" id="nextFullQuestion" type="button">Next</button>`}
+            ? `<button class="act" id="finishFullExam" type="button">${t("fullExam.finishExam")}</button>`
+            : `<button class="act ghost" id="nextFullQuestion" type="button">${t("qbank.next")}</button>`}
         </div>
       </section>
     `;
@@ -2099,7 +2210,7 @@
       attempt.answers[question.id] = readCyuAnswer(question, "full");
       saveProgress();
       const answered = attempt.questionIds.filter(id => isCyuAnswered(cyuQuestionById(id), attempt.answers[id])).length;
-      if(confirm("Submit this exam now? " + answered + " of " + attempt.questionIds.length + " questions are answered.")) submitFullExam(false);
+      if(confirm(t("fullExam.confirmSubmit", {answered, total:attempt.questionIds.length}))) submitFullExam(false);
     });
   }
 
@@ -2108,34 +2219,34 @@
     const weakObjectives = result.byObjective.filter(row => row.total && row.percent < fullExamConfig.preparationTarget);
     els.app.innerHTML = `
       <section class="hero-panel">
-        <p class="objective-label">Full Exam Result</p>
-        <h2>${result.correct} / ${result.total} correct · ${result.percent}%</h2>
-        <p>${result.automaticSubmit ? "Time expired and the attempt was submitted automatically." : "Attempt submitted."} Target readiness band: ${fullExamConfig.preparationTarget}% or higher.</p>
+        <p class="objective-label">${t("fullExam.resultEyebrow")}</p>
+        <h2>${t("checkpointResult.scoreLine", {correct:result.correct, total:result.total, pct:result.percent})}</h2>
+        <p>${result.automaticSubmit ? t("fullExam.autoSubmitted") : t("fullExam.submitted")}${t("fullExam.targetBand", {pct:fullExamConfig.preparationTarget})}</p>
         <div class="hero-actions">
-          <button class="act route-button" data-route="#/full-exam/start" type="button">Start another exam</button>
-          <button class="act ghost route-button" data-route="#/question-bank/filter/missed" type="button">Practice missed</button>
+          <button class="act route-button" data-route="#/full-exam/start" type="button">${t("fullExam.startAnother")}</button>
+          <button class="act ghost route-button" data-route="#/question-bank/filter/missed" type="button">${t("fullExam.practiceMissed")}</button>
         </div>
       </section>
       <section class="summary-grid">
-        <div class="summary-card"><span>Correct</span><b>${result.correct}</b></div>
-        <div class="summary-card"><span>Incorrect</span><b>${result.incorrect}</b></div>
-        <div class="summary-card"><span>Unanswered</span><b>${result.unanswered}</b></div>
-        <div class="summary-card"><span>Time used</span><b>${formatDuration(result.timeUsedMs)}</b></div>
+        <div class="summary-card"><span>${t("fullExam.correct")}</span><b>${result.correct}</b></div>
+        <div class="summary-card"><span>${t("fullExam.incorrect")}</span><b>${result.incorrect}</b></div>
+        <div class="summary-card"><span>${t("fullExam.unanswered")}</span><b>${result.unanswered}</b></div>
+        <div class="summary-card"><span>${t("fullExam.timeUsed")}</span><b>${formatDuration(result.timeUsedMs)}</b></div>
       </section>
       <section class="page-section">
-        <h3>Domain diagnostics</h3>
-        <div class="activity-list">${result.byDomain.map(row => diagnosticCard("Domain " + row.domain, domainTitle(row.domain), row)).join("")}</div>
+        <h3>${t("fullExam.domainDiagnostics")}</h3>
+        <div class="activity-list">${result.byDomain.map(row => diagnosticCard(t("domainCard.label", {n:row.domain}), domainTitle(row.domain), row)).join("")}</div>
       </section>
       <section class="page-section">
-        <h3>Objective remediation</h3>
-        ${weakObjectives.length ? `<div class="activity-list">${weakObjectives.map(row => remediationCard(row)).join("")}</div>` : `<p class="muted">No objective fell below the ${fullExamConfig.preparationTarget}% readiness target.</p>`}
+        <h3>${t("fullExam.objectiveRemediation")}</h3>
+        ${weakObjectives.length ? `<div class="activity-list">${weakObjectives.map(row => remediationCard(row)).join("")}</div>` : `<p class="muted">${t("fullExam.noObjectiveBelow", {pct:fullExamConfig.preparationTarget})}</p>`}
       </section>
       <section class="page-section">
-        <h3>Cross-domain patterns</h3>
+        <h3>${t("fullExam.crossDomainPatterns")}</h3>
         ${renderPatternDiagnostics(result)}
       </section>
       <section class="page-section">
-        <h3>Review every question</h3>
+        <h3>${t("fullExam.reviewEveryQuestion")}</h3>
         <div class="review-list">${result.review.map((item, idx) => renderExamReviewItem(item, idx)).join("")}</div>
       </section>
     `;
@@ -2184,22 +2295,22 @@
 
   function domainTitle(domain){
     const match = data.domains.find(item => item.number === Number(domain));
-    return match ? match.title : "Domain " + domain;
+    return match ? match.title : t("domainCard.label", {n:domain});
   }
 
   function objectiveTitle(objective){
     const hierarchy = data.guideHierarchy && data.guideHierarchy.subtaskTitles;
-    return hierarchy && hierarchy[objective] ? hierarchy[objective] : "Objective " + objective;
+    return hierarchy && hierarchy[objective] ? hierarchy[objective] : t("objective.fallbackLabel", {id:objective});
   }
 
   function cyuTypeLabel(type){
-    return type === "multiple-choice" ? "Multiple choice" : type === "multiple-response" ? "Multiple response" : type === "ordering" ? "Ordering" : type === "matching" ? "Matching" : type;
+    return type === "multiple-choice" ? t("cyuType.multipleChoice") : type === "multiple-response" ? t("cyuType.multipleResponse") : type === "ordering" ? t("cyuType.ordering") : type === "matching" ? t("cyuType.matching") : type;
   }
 
   function renderCyuQuestionForm(question, answer, prefix, activeExam, attempt){
     const text = question.stemHtml || escapeHTML(question.stem || "");
     return `<div class="exam-question" data-question-id="${escapeHTML(question.id)}">
-      <p class="objective-label">${activeExam ? "Question" : escapeHTML(cyuTypeLabel(question.type))}</p>
+      <p class="objective-label">${activeExam ? t("cyu.questionLabel") : escapeHTML(cyuTypeLabel(question.type))}</p>
       <h3>${text}</h3>
       ${question.type === "ordering" ? renderCyuOrdering(question, answer, prefix, activeExam, attempt) : question.type === "matching" ? renderCyuMatching(question, answer, prefix, activeExam, attempt) : renderCyuOptions(question, answer, prefix, activeExam, attempt)}
     </div>`;
@@ -2210,8 +2321,8 @@
     const ids = activeExam && attempt && attempt.optionOrders[question.id] ? attempt.optionOrders[question.id] : question.options.map(option => option.id);
     const type = question.type === "multiple-response" ? "checkbox" : "radio";
     const name = prefix + "-" + question.id;
-    return `<div class="option-stack" role="group" aria-label="Answer options">
-      ${question.type === "multiple-response" ? `<p class="domain-meta">Select all that apply.</p>` : ""}
+    return `<div class="option-stack" role="group" aria-label="${t("cyu.answerOptions")}">
+      ${question.type === "multiple-response" ? `<p class="domain-meta">${t("cyu.selectAllApply")}</p>` : ""}
       ${ids.map(id => {
         const option = question.options.find(item => item.id === id);
         if(!option) return "";
@@ -2223,8 +2334,8 @@
   function renderCyuOrdering(question, answer, prefix, activeExam, attempt){
     const chosen = Array.isArray(answer) ? answer : [];
     const items = activeExam && attempt && attempt.itemOrders[question.id] ? attempt.itemOrders[question.id] : shuffle((question.items || question.orderItems || question.correctOrder || []).slice());
-    return `<div class="match-list">${(question.correctOrder || []).map((_, idx) => `<label class="match-row"><span>Position ${idx + 1}</span><select data-cyu-order="${idx}" id="${escapeHTML(prefix)}-order-${idx}">
-      <option value="">Choose item</option>
+    return `<div class="match-list">${(question.correctOrder || []).map((_, idx) => `<label class="match-row"><span>${t("cyu.position", {n:idx + 1})}</span><select data-cyu-order="${idx}" id="${escapeHTML(prefix)}-order-${idx}">
+      <option value="">${t("cyu.chooseItem")}</option>
       ${items.map(item => `<option value="${escapeHTML(item)}" ${chosen[idx] === item ? "selected" : ""}>${escapeHTML(item)}</option>`).join("")}
     </select></label>`).join("")}</div>`;
   }
@@ -2233,7 +2344,7 @@
     const selected = answer && !Array.isArray(answer) ? answer : {};
     const options = activeExam && attempt && attempt.matchingOptionOrders[question.id] ? attempt.matchingOptionOrders[question.id] : shuffle((question.matchingOptions || []).slice());
     return `<div class="match-list">${(question.matchingPrompts || []).map((prompt, idx) => `<label class="match-row"><span>${escapeHTML(prompt)}</span><select data-cyu-match="${idx}" data-prompt="${escapeHTML(prompt)}" id="${escapeHTML(prefix)}-match-${idx}">
-      <option value="">Choose match</option>
+      <option value="">${t("cyu.chooseMatch")}</option>
       ${options.map(option => `<option value="${escapeHTML(option)}" ${selected[prompt] === option ? "selected" : ""}>${escapeHTML(option)}</option>`).join("")}
     </select></label>`).join("")}</div>`;
   }
@@ -2289,14 +2400,14 @@
 
   function renderCyuFeedback(question, answer, correct){
     return `<div class="${correct ? "feedback correct" : "feedback incorrect"}">
-      <h4>${correct ? "Correct" : "Review this one"}</h4>
-      <p><strong>Correct answer:</strong> ${escapeHTML(cyuCorrectText(question))}</p>
+      <h4>${correct ? t("cyuFeedback.correct") : t("cyuFeedback.reviewThisOne")}</h4>
+      <p><strong>${t("cyuFeedback.correctAnswer")}</strong> ${escapeHTML(cyuCorrectText(question))}</p>
       ${question.explanation ? `<p>${escapeHTML(question.explanation)}</p>` : ""}
       ${cyuIncorrectExplanations(question).length ? `<ul>${cyuIncorrectExplanations(question).map(item => `<li>${escapeHTML(item)}</li>`).join("")}</ul>` : ""}
-      ${question.takeaway ? `<p><strong>Takeaway:</strong> ${escapeHTML(question.takeaway)}</p>` : ""}
-      ${question.sequenceLogic ? `<p><strong>Sequence logic:</strong> ${escapeHTML(question.sequenceLogic)}</p>` : ""}
-      ${question.decisiveDetail ? `<p><strong>Decisive detail:</strong> ${escapeHTML(question.decisiveDetail)}</p>` : ""}
-      <p class="source-note">${escapeHTML(question.source || "Master Study Guide CYU")} · ${escapeHTML(question.objective)} · ${escapeHTML(cyuTypeLabel(question.type))}</p>
+      ${question.takeaway ? `<p><strong>${t("cyuFeedback.takeaway")}</strong> ${escapeHTML(question.takeaway)}</p>` : ""}
+      ${question.sequenceLogic ? `<p><strong>${t("cyuFeedback.sequenceLogic")}</strong> ${escapeHTML(question.sequenceLogic)}</p>` : ""}
+      ${question.decisiveDetail ? `<p><strong>${t("cyuFeedback.decisiveDetail")}</strong> ${escapeHTML(question.decisiveDetail)}</p>` : ""}
+      <p class="source-note">${escapeHTML(question.source || t("qbank.masterCyuSource"))} · ${escapeHTML(question.objective)} · ${escapeHTML(cyuTypeLabel(question.type))}</p>
     </div>`;
   }
 
@@ -2310,7 +2421,7 @@
   }
 
   function cyuAnswerText(question, answer){
-    if(!isCyuAnswered(question, answer)) return "Unanswered";
+    if(!isCyuAnswered(question, answer)) return t("cyuFeedback.unanswered");
     if(question.type === "matching") return Object.entries(answer).map(([prompt, value]) => prompt + " -> " + value).join("; ");
     if(question.type === "ordering") return answer.map((item, idx) => (idx + 1) + ". " + item).join("; ");
     return answer.map(id => {
@@ -2415,7 +2526,7 @@
     const timer = document.getElementById("fullExamTimer");
     if(!attempt || !timer) return;
     const remaining = Math.max(0, attempt.expiresAt - Date.now());
-    timer.textContent = "Remaining " + formatDuration(remaining);
+    timer.textContent = t("timer.remaining", {time:formatDuration(remaining)});
     timer.classList.toggle("is-warning", remaining <= 10 * 60 * 1000);
     timer.classList.toggle("is-danger", remaining <= 5 * 60 * 1000);
     if(remaining <= 0) submitFullExam(true);
@@ -2432,7 +2543,7 @@
     if(index === attempt.currentIndex) classes.push("is-current");
     if(isCyuAnswered(cyuQuestionById(id), attempt.answers[id])) classes.push("is-answered");
     if(attempt.flagged[id]) classes.push("is-flagged");
-    return `<button class="${classes.join(" ")}" type="button" data-index="${index}" aria-label="Question ${index + 1}">${index + 1}</button>`;
+    return `<button class="${classes.join(" ")}" type="button" data-index="${index}" aria-label="${t("d1exam.questionN", {n:index + 1})}">${index + 1}</button>`;
   }
 
   function submitFullExam(automatic){
@@ -2501,7 +2612,7 @@
 
   function diagnosticCard(label, title, row){
     return `<article class="activity-card">
-      <div><p class="objective-label">${escapeHTML(label)}</p><h4>${escapeHTML(title)}</h4><p class="domain-meta">${row.correct}/${row.total} correct · ${row.incorrect} incorrect · ${row.unanswered} unanswered</p></div>
+      <div><p class="objective-label">${escapeHTML(label)}</p><h4>${escapeHTML(title)}</h4><p class="domain-meta">${t("diagnostic.correctIncorrectUnanswered", {correct:row.correct, total:row.total, incorrect:row.incorrect, unanswered:row.unanswered})}</p></div>
       <span class="status-pill">${row.percent}%</span>
     </article>`;
   }
@@ -2512,7 +2623,7 @@
       <div>
         <p class="objective-label">${escapeHTML(row.objective)} · ${escapeHTML(performanceLabel(row.percent))}</p>
         <h4>${escapeHTML(row.title)}</h4>
-        <p class="domain-meta">${row.correct}/${row.total} correct · Study: Master Study Guide §${escapeHTML(row.objective)}</p>
+        <p class="domain-meta">${t("diagnostic.studySection", {correct:row.correct, total:row.total, objective:escapeHTML(row.objective)})}</p>
         ${routes.length ? `<div class="badge-row">${routes.map(route => `<button class="link-button route-button" data-route="${route.route}" type="button">${escapeHTML(route.label)}</button>`).join("")}</div>` : ""}
       </div>
       <span class="status-pill">${row.percent}%</span>
@@ -2550,40 +2661,40 @@
   }
 
   function renderPatternDiagnostics(result){
-    if(!result.patterns || !result.patterns.length) return `<p class="muted">No recurring cross-domain weakness pattern fell below the readiness target.</p>`;
+    if(!result.patterns || !result.patterns.length) return `<p class="muted">${t("pattern.noRecurring")}</p>`;
     return `<div class="activity-list">${result.patterns.map(row => `<article class="activity-card">
-      <div><p class="objective-label">${escapeHTML(performanceLabel(row.percent))}</p><h4>${escapeHTML(row.topic)}</h4><p class="domain-meta">${row.correct}/${row.total} correct · Objectives: ${row.objectives.map(escapeHTML).join(", ")}</p></div>
+      <div><p class="objective-label">${escapeHTML(performanceLabel(row.percent))}</p><h4>${escapeHTML(row.topic)}</h4><p class="domain-meta">${t("pattern.correctObjectives", {correct:row.correct, total:row.total, list:row.objectives.map(escapeHTML).join(", ")})}</p></div>
       <span class="status-pill">${row.percent}%</span>
     </article>`).join("")}</div>`;
   }
 
   function topicForObjective(objective){
-    if(/^4\./.test(objective)) return "Responsible AI, transparency, and risk controls";
-    if(/^5\./.test(objective)) return "Security, compliance, and governance";
-    if(/^3\.2\./.test(objective)) return "Prompt engineering and prompt operations";
-    if(/^3\.3\./.test(objective)) return "Model customization and cost tradeoffs";
-    if(/^3\.4\./.test(objective) || objective === "1.3.6") return "Metrics and model evaluation";
-    if(["3.1.3","3.1.4","5.1.5","2.1.5"].includes(objective)) return "RAG, embeddings, and vector retrieval";
-    if(["3.1.6","2.1.6"].includes(objective)) return "Agents, assistants, and workflow automation";
-    if(/^1\.3\./.test(objective)) return "ML lifecycle and model behavior";
-    if(/^2\./.test(objective)) return "GenAI concepts and foundation model selection";
-    if(/^1\./.test(objective)) return "AI/ML fundamentals and AWS service selection";
-    return "General exam readiness";
+    if(/^4\./.test(objective)) return t("topic.responsibleAI");
+    if(/^5\./.test(objective)) return t("topic.securityCompliance");
+    if(/^3\.2\./.test(objective)) return t("topic.promptEngineering");
+    if(/^3\.3\./.test(objective)) return t("topic.modelCustomization");
+    if(/^3\.4\./.test(objective) || objective === "1.3.6") return t("topic.metricsEvaluation");
+    if(["3.1.3","3.1.4","5.1.5","2.1.5"].includes(objective)) return t("topic.ragEmbeddings");
+    if(["3.1.6","2.1.6"].includes(objective)) return t("topic.agentsAutomation");
+    if(/^1\.3\./.test(objective)) return t("topic.mlLifecycle");
+    if(/^2\./.test(objective)) return t("topic.genaiConcepts");
+    if(/^1\./.test(objective)) return t("topic.aiFundamentals");
+    return t("topic.generalReadiness");
   }
 
   function renderExamReviewItem(item, index){
     const question = cyuQuestionById(item.questionId);
     const cls = item.correct ? "correct" : item.answered ? "incorrect" : "feedback";
     return `<details class="review-item">
-      <summary>${index + 1}. ${escapeHTML(question.objective)} · ${item.correct ? "Correct" : item.answered ? "Incorrect" : "Unanswered"}${item.flagged ? " · Flagged" : ""}</summary>
+      <summary>${index + 1}. ${escapeHTML(question.objective)} · ${item.correct ? t("cyuFeedback.correct") : item.answered ? t("examReview.incorrect") : t("cyuFeedback.unanswered")}${item.flagged ? t("examReview.flaggedSuffix") : ""}</summary>
       <div class="${cls}">
         <p>${question.stemHtml || escapeHTML(question.stem)}</p>
-        <p><strong>Your answer:</strong> ${escapeHTML(cyuAnswerText(question, item.answer))}</p>
-        <p><strong>Correct answer:</strong> ${escapeHTML(cyuCorrectText(question))}</p>
+        <p><strong>${t("examReview.yourAnswer")}</strong> ${escapeHTML(cyuAnswerText(question, item.answer))}</p>
+        <p><strong>${t("cyuFeedback.correctAnswer")}</strong> ${escapeHTML(cyuCorrectText(question))}</p>
         ${question.explanation ? `<p>${escapeHTML(question.explanation)}</p>` : ""}
         ${renderReviewOptionList(question, item.answer)}
-        ${question.takeaway ? `<p><strong>Takeaway:</strong> ${escapeHTML(question.takeaway)}</p>` : ""}
-        <p class="source-note">${escapeHTML(question.source || "Master Study Guide CYU")} · Domain ${question.domain} · ${escapeHTML(cyuTypeLabel(question.type))}</p>
+        ${question.takeaway ? `<p><strong>${t("cyuFeedback.takeaway")}</strong> ${escapeHTML(question.takeaway)}</p>` : ""}
+        <p class="source-note">${t("examReview.sourceDomainType", {source:escapeHTML(question.source || t("qbank.masterCyuSource")), domain:question.domain, type:escapeHTML(cyuTypeLabel(question.type))})}</p>
       </div>
     </details>`;
   }
@@ -2599,7 +2710,7 @@
       const classes = ["review-option"];
       if(isCorrect) classes.push("is-correct");
       else if(isSelected) classes.push("is-wrong");
-      const marker = isCorrect ? "Correct" : isSelected ? "Your choice" : "";
+      const marker = isCorrect ? t("cyuFeedback.correct") : isSelected ? t("examReview.yourChoice") : "";
       const note = isCorrect ? "" : (question.distractorExplanations && question.distractorExplanations[option.id]) || (question.incorrectOptionExplanations && question.incorrectOptionExplanations[option.id]) || "";
       return `<li class="${classes.join(" ")}"><strong>${escapeHTML(option.id.toUpperCase())}.</strong> ${escapeHTML(option.text)}${marker ? ` <span class="review-option-marker">${marker}</span>` : ""}${note ? ` — ${escapeHTML(note)}` : ""}</li>`;
     }).join("")}</ul>`;
@@ -2634,34 +2745,34 @@
       <section class="activity-shell exam-shell">
         <header class="activity-header">
           <div>
-            <p class="objective-label">Domain 1 · Tasks 1.1, 1.2, 1.3 · Exam simulation</p>
-            <h2>Domain 1 Simulated Exam</h2>
-            <p>Sixty questions covering all 17 Domain 1 objectives. Answers and explanations are shown only after final submission.</p>
+            <p class="objective-label">${t("d1exam.eyebrow")}</p>
+            <h2>${t("d1exam.title")}</h2>
+            <p>${t("d1exam.intro")}</p>
           </div>
           <div class="activity-links">
-            <button class="link-button route-button" data-route="#/home" type="button">Dashboard</button>
-            <button class="link-button route-button" data-route="#/domain/1" type="button">Back to domain</button>
+            <button class="link-button route-button" data-route="#/home" type="button">${t("activity.dashboard")}</button>
+            <button class="link-button route-button" data-route="#/domain/1" type="button">${t("activity.backToDomain")}</button>
           </div>
         </header>
         <section class="exam-intro">
           <div class="summary-grid">
-            <div class="summary-card"><span>Questions</span><b>${config.questionCount}</b></div>
-            <div class="summary-card"><span>Simulation time limit</span><b>${config.timeLimitMinutes} min</b></div>
-            <div class="summary-card"><span>Formats</span><b>MCQ + MRQ</b></div>
+            <div class="summary-card"><span>${t("d1exam.questions")}</span><b>${config.questionCount}</b></div>
+            <div class="summary-card"><span>${t("d1exam.timeLimit")}</span><b>${t("d1exam.nMin", {n:config.timeLimitMinutes})}</b></div>
+            <div class="summary-card"><span>${t("d1exam.formats")}</span><b>MCQ + MRQ</b></div>
           </div>
           <ul class="exam-rules">
-            <li>One question is displayed at a time.</li>
-            <li>Answers are checked only after final submission.</li>
-            <li>Unanswered questions count as incorrect.</li>
-            <li>Multiple-response questions receive no partial credit.</li>
-            <li>The 90 minutes label is this simulation's configured time limit, not a claim about the official exam duration.</li>
+            <li>${t("d1exam.rule1")}</li>
+            <li>${t("d1exam.rule2")}</li>
+            <li>${t("d1exam.rule3")}</li>
+            <li>${t("d1exam.rule4")}</li>
+            <li>${t("d1exam.rule5")}</li>
           </ul>
           <fieldset class="mode-choice">
-            <legend>Mode</legend>
-            <label><input type="radio" name="examMode" value="timed" checked> Timed Exam</label>
-            <label><input type="radio" name="examMode" value="untimed"> Untimed Practice</label>
+            <legend>${t("d1exam.mode")}</legend>
+            <label><input type="radio" name="examMode" value="timed" checked> ${t("d1exam.timedExam")}</label>
+            <label><input type="radio" name="examMode" value="untimed"> ${t("d1exam.untimedPractice")}</label>
           </fieldset>
-          <button class="act" id="startExam" type="button">Start Exam</button>
+          <button class="act" id="startExam" type="button">${t("d1exam.startExam")}</button>
         </section>
         ${renderExamHistory(history)}
       </section>
@@ -2722,25 +2833,25 @@
       <section class="activity-shell exam-shell">
         <header class="exam-header">
           <div>
-            <p class="objective-label">Domain 1 Simulated Exam</p>
-            <h2>Question ${attempt.currentIndex + 1} of ${attempt.questionIds.length}</h2>
+            <p class="objective-label">${t("d1exam.title")}</p>
+            <h2>${t("d1exam.questionOf", {n:attempt.currentIndex + 1, total:attempt.questionIds.length})}</h2>
           </div>
           <div class="exam-meta">
             <span id="examTimer" class="timer" aria-live="off"></span>
             <span id="timerAnnouncer" class="sr-only" aria-live="polite"></span>
-            <span>${answered} answered</span>
-            <span>${flagged} flagged</span>
+            <span>${t("d1exam.nAnswered", {n:answered})}</span>
+            <span>${t("d1exam.nFlagged", {n:flagged})}</span>
           </div>
         </header>
         <div class="exam-layout">
-          <aside class="question-nav" aria-label="Question navigator">${attempt.questionIds.map((id, i) => examNavButton(attempt, id, i)).join("")}</aside>
+          <aside class="question-nav" aria-label="${t("d1exam.questionNav")}">${attempt.questionIds.map((id, i) => examNavButton(attempt, id, i)).join("")}</aside>
           <section class="question-panel">
             <p class="question-stem">${escapeHTML(question.stem)}</p>
             <form class="options-form" id="optionsForm">${renderQuestionOptions(question, attempt)}</form>
-            <label class="flag-control"><input id="flagQuestion" type="checkbox" ${attempt.flagged[question.id] ? "checked" : ""}> Flag for review</label>
+            <label class="flag-control"><input id="flagQuestion" type="checkbox" ${attempt.flagged[question.id] ? "checked" : ""}> ${t("d1exam.flagForReview")}</label>
             <div class="exam-actions">
-              ${attempt.currentIndex ? `<button class="act ghost" id="prevQuestion" type="button">Previous</button>` : ""}
-              <button class="act" id="${attempt.currentIndex === attempt.questionIds.length - 1 ? "submitExam" : "nextQuestion"}" type="button">${attempt.currentIndex === attempt.questionIds.length - 1 ? "Submit Exam" : "Next"}</button>
+              ${attempt.currentIndex ? `<button class="act ghost" id="prevQuestion" type="button">${t("qbank.previous")}</button>` : ""}
+              <button class="act" id="${attempt.currentIndex === attempt.questionIds.length - 1 ? "submitExam" : "nextQuestion"}" type="button">${attempt.currentIndex === attempt.questionIds.length - 1 ? t("d1exam.submitExam") : t("qbank.next")}</button>
             </div>
           </section>
         </div>
@@ -2755,7 +2866,7 @@
     const selected = attempt.answers[question.id] || [];
     const order = attempt.optionOrders[question.id] || question.options.map(option => option.id);
     const required = question.correctAnswers.length;
-    const hint = question.type === "multiple-response" ? `<p class="mrq-hint">Select ${numberWord(required)}.</p>` : "";
+    const hint = question.type === "multiple-response" ? `<p class="mrq-hint">${t("reinforce.selectHint", {word:numberWord(required)})}</p>` : "";
     return hint + order.map(optionId => {
       const option = question.options.find(item => item.id === optionId);
       const inputType = question.type === "multiple-response" ? "checkbox" : "radio";
@@ -2796,8 +2907,8 @@
     const unanswered = attempt.questionIds.filter(id => !(attempt.answers[id] && attempt.answers[id].length));
     if(!automatic){
       const message = unanswered.length
-        ? `${unanswered.length} questions are unanswered and will count as incorrect. Submit anyway?`
-        : "Submit exam now? You will not be able to change answers.";
+        ? t("d1exam.confirmUnanswered", {n:unanswered.length})
+        : t("d1exam.confirmSubmit");
       if(!confirm(message)) return;
     }
     submitExam(activity, automatic);
@@ -2882,32 +2993,32 @@
       <section class="activity-shell exam-shell">
         <header class="activity-header">
           <div>
-            <p class="objective-label">Domain 1 Simulated Exam · Results</p>
-            <h2>${result.correct} / ${result.total} correct · ${result.percent}%</h2>
-            <p class="${result.percent >= config.passingPercent ? "verdict win" : "verdict"}">${result.percent >= config.passingPercent ? "Above the study passing benchmark" : "Below the study passing benchmark"}</p>
+            <p class="objective-label">${t("d1exam.resultsEyebrow")}</p>
+            <h2>${t("checkpointResult.scoreLine", {correct:result.correct, total:result.total, pct:result.percent})}</h2>
+            <p class="${result.percent >= config.passingPercent ? "verdict win" : "verdict"}">${result.percent >= config.passingPercent ? t("d1exam.abovePassing") : t("d1exam.belowPassing")}</p>
           </div>
           <div class="activity-links">
-            <button class="link-button route-button" data-route="#/home" type="button">Dashboard</button>
-            <button class="link-button route-button" data-route="#/domain/1" type="button">Back to domain</button>
+            <button class="link-button route-button" data-route="#/home" type="button">${t("activity.dashboard")}</button>
+            <button class="link-button route-button" data-route="#/domain/1" type="button">${t("activity.backToDomain")}</button>
           </div>
         </header>
-        <p class="source-note">AWS uses scaled scoring on the real certification exam. The 70% threshold in this study tool is an approximate preparation benchmark and does not predict an official AWS exam score.</p>
+        <p class="source-note">${t("d1exam.scoringNote")}</p>
         <section class="summary-grid">
-          <div class="summary-card"><span>Time used</span><b>${formatDuration(result.timeUsedMs)}</b></div>
-          <div class="summary-card"><span>Answered</span><b>${result.answeredQuestionIds.length}</b></div>
-          <div class="summary-card"><span>Unanswered</span><b>${result.unansweredQuestionIds.length}</b></div>
-          <div class="summary-card"><span>Flagged</span><b>${result.flaggedQuestionIds.length}</b></div>
+          <div class="summary-card"><span>${t("d1exam.timeUsed")}</span><b>${formatDuration(result.timeUsedMs)}</b></div>
+          <div class="summary-card"><span>${t("d1exam.answered")}</span><b>${result.answeredQuestionIds.length}</b></div>
+          <div class="summary-card"><span>${t("d1exam.unanswered")}</span><b>${result.unansweredQuestionIds.length}</b></div>
+          <div class="summary-card"><span>${t("d1exam.flagged")}</span><b>${result.flaggedQuestionIds.length}</b></div>
         </section>
         <section class="two-col">
-          <div class="page-section"><h3>Task statement results</h3>${renderTaskResults(result)}</div>
-          <div class="page-section"><h3>Historical averages</h3>${renderExamAverages(history)}</div>
+          <div class="page-section"><h3>${t("d1exam.taskResults")}</h3>${renderTaskResults(result)}</div>
+          <div class="page-section"><h3>${t("d1exam.historicalAverages")}</h3>${renderExamAverages(history)}</div>
         </section>
-        <section class="page-section"><h3>Recommended review areas</h3>${renderReviewRecommendations(weak)}</section>
-        <section class="page-section"><h3>Objective results</h3>${renderObjectiveResults(result)}</section>
-        <section class="page-section"><h3>Answer review</h3>${renderAnswerReview(result)}</section>
+        <section class="page-section"><h3>${t("d1exam.recommendedReview")}</h3>${renderReviewRecommendations(weak)}</section>
+        <section class="page-section"><h3>${t("d1exam.objectiveResults")}</h3>${renderObjectiveResults(result)}</section>
+        <section class="page-section"><h3>${t("d1exam.answerReview")}</h3>${renderAnswerReview(result)}</section>
         <div class="controls">
-          <button class="act" id="newExamAttempt" type="button">Start a new attempt</button>
-          <button class="act ghost route-button" data-route="#/domain/1" type="button">Return to Domain 1</button>
+          <button class="act" id="newExamAttempt" type="button">${t("d1exam.newAttempt")}</button>
+          <button class="act ghost route-button" data-route="#/domain/1" type="button">${t("d1exam.returnToDomain1")}</button>
         </div>
       </section>
     `;
@@ -2921,9 +3032,9 @@
   }
 
   function renderTaskResults(result){
-    return ["Task 1.1","Task 1.2","Task 1.3"].map(task => {
-      const row = result.byTask[task] || {correct:0,total:0};
-      return `<p class="result-row"><span>${task}</span><b>${row.correct} / ${row.total} · ${percent(row)}%</b></p>`;
+    return ["1.1","1.2","1.3"].map(code => {
+      const row = result.byTask["Task " + code] || {correct:0,total:0};
+      return `<p class="result-row"><span>${t("d1exam.taskPrefix", {code})}</span><b>${row.correct} / ${row.total} · ${percent(row)}%</b></p>`;
     }).join("");
   }
 
@@ -2932,7 +3043,7 @@
     return Object.keys(config.objectiveBlueprint).map(objective => {
       const row = result.byObjective[objective] || {correct:0,total:0};
       const pct = percent(row);
-      return `<p class="result-row"><span>${objective} ${config.objectiveTitles[objective]}</span><b>${row.correct}/${row.total}, ${pct}% · ${performanceLabel(pct)}</b></p>`;
+      return `<p class="result-row"><span>${objective} ${objectiveTitle(objective)}</span><b>${row.correct}/${row.total}, ${pct}% · ${performanceLabel(pct)}</b></p>`;
     }).join("");
   }
 
@@ -2940,7 +3051,7 @@
     return weak.map(item => {
       const route = reviewRouteForObjective(item.objective);
       const unit = reinforcementForObjective(item.objective);
-      return `<p class="result-row"><span>${item.objective} ${window.DOMAIN1_EXAM_CONFIG.objectiveTitles[item.objective]}</span><b>${item.correct}/${item.total}, ${item.percent}%</b>${unit ? ` <button class="link-button route-button" data-route="#/activity/${unit.id}" type="button">Review weak areas</button>` : route ? ` <button class="link-button route-button" data-route="${route}" type="button">Open study activity</button>` : ""}</p>`;
+      return `<p class="result-row"><span>${item.objective} ${objectiveTitle(item.objective)}</span><b>${item.correct}/${item.total}, ${item.percent}%</b>${unit ? ` <button class="link-button route-button" data-route="#/activity/${unit.id}" type="button">${t("home.reviewWeak")}</button>` : route ? ` <button class="link-button route-button" data-route="${route}" type="button">${t("d1exam.openStudyActivity")}</button>` : ""}</p>`;
     }).join("");
   }
 
@@ -2949,38 +3060,38 @@
       const question = questionById(item.questionId);
       const selected = item.selectedAnswers;
       return `<details class="review-item">
-        <summary>${index + 1}. ${item.correct ? "Correct" : "Incorrect"} · ${escapeHTML(question.stem)}</summary>
-        <p><strong>Your answer:</strong> ${answerText(question, selected) || "Unanswered"}</p>
-        <p><strong>Correct answer:</strong> ${answerText(question, question.correctAnswers)}</p>
-        <p><strong>Explanation:</strong> ${escapeHTML(question.explanation)}</p>
+        <summary>${index + 1}. ${item.correct ? t("cyuFeedback.correct") : t("examReview.incorrect")} · ${escapeHTML(question.stem)}</summary>
+        <p><strong>${t("examReview.yourAnswer")}</strong> ${answerText(question, selected) || t("cyuFeedback.unanswered")}</p>
+        <p><strong>${t("cyuFeedback.correctAnswer")}</strong> ${answerText(question, question.correctAnswers)}</p>
+        <p><strong>${t("d1exam.explanationLabel")}</strong> ${escapeHTML(question.explanation)}</p>
         ${renderReviewOptionList(question, selected)}
-        <p class="domain-meta">Task ${question.task} · Objective ${question.objective} · ${question.sourceReference}</p>
-        ${!item.correct && reinforcementForObjective(question.objective) ? `<button class="link-button route-button reinforcement-review-link" data-objective="${question.objective}" data-route="#/activity/${reinforcementForObjective(question.objective).id}" type="button">Practice this distinction</button>` : ""}
+        <p class="domain-meta">${t("d1exam.taskObjectiveSource", {task:question.task, objective:question.objective, source:question.sourceReference})}</p>
+        ${!item.correct && reinforcementForObjective(question.objective) ? `<button class="link-button route-button reinforcement-review-link" data-objective="${question.objective}" data-route="#/activity/${reinforcementForObjective(question.objective).id}" type="button">${t("d1exam.practiceDistinction")}</button>` : ""}
       </details>`;
     }).join("");
   }
 
   function renderExamHistory(history){
-    if(!history.length) return `<section class="page-section"><h3>Attempt history</h3><p class="muted">No completed attempts yet.</p></section>`;
-    return `<section class="page-section"><h3>Attempt history</h3>${renderExamAverages(history)}</section>`;
+    if(!history.length) return `<section class="page-section"><h3>${t("d1exam.attemptHistory")}</h3><p class="muted">${t("d1exam.noAttemptsYet")}</p></section>`;
+    return `<section class="page-section"><h3>${t("d1exam.attemptHistory")}</h3>${renderExamAverages(history)}</section>`;
   }
 
   function renderExamAverages(history){
-    if(!history.length) return `<p class="muted">Complete an attempt to build history.</p>`;
+    if(!history.length) return `<p class="muted">${t("d1exam.completeToHistory")}</p>`;
     const best = history.reduce((max, attempt) => Math.max(max, attempt.percent), 0);
     const avg = Math.round(history.reduce((sum, attempt) => sum + attempt.percent, 0) / history.length);
     const recent = history[0];
-    const taskAvg = ["Task 1.1","Task 1.2","Task 1.3"].map(task => {
-      const values = history.map(attempt => percent(attempt.byTask[task] || {correct:0,total:0}));
-      return `${task}: ${Math.round(values.reduce((a,b) => a + b, 0) / values.length)}%`;
+    const taskAvg = ["1.1","1.2","1.3"].map(code => {
+      const values = history.map(attempt => percent(attempt.byTask["Task " + code] || {correct:0,total:0}));
+      return `${t("d1exam.taskPrefix", {code})}: ${Math.round(values.reduce((a,b) => a + b, 0) / values.length)}%`;
     }).join(" · ");
     const repeated = repeatedWeakObjectives(history);
-    return `<p class="result-row"><span>Most recent</span><b>${recent.correct}/${recent.total}, ${recent.percent}%</b></p>
-      <p class="result-row"><span>Best total score</span><b>${best}%</b></p>
-      <p class="result-row"><span>Average total score</span><b>${avg}%</b></p>
-      <p class="result-row"><span>Task averages</span><b>${taskAvg}</b></p>
-      <p class="result-row"><span>Score trend</span><b>${history.slice().reverse().map(a => a.percent + "%").join(" → ")}</b></p>
-      <p class="result-row"><span>Repeated below 70%</span><b>${repeated.length ? repeated.join(", ") : "None yet"}</b></p>`;
+    return `<p class="result-row"><span>${t("d1exam.mostRecent")}</span><b>${recent.correct}/${recent.total}, ${recent.percent}%</b></p>
+      <p class="result-row"><span>${t("d1exam.bestTotalScore")}</span><b>${best}%</b></p>
+      <p class="result-row"><span>${t("d1exam.averageTotalScore")}</span><b>${avg}%</b></p>
+      <p class="result-row"><span>${t("d1exam.taskAverages")}</span><b>${taskAvg}</b></p>
+      <p class="result-row"><span>${t("d1exam.scoreTrend")}</span><b>${history.slice().reverse().map(a => a.percent + "%").join(" → ")}</b></p>
+      <p class="result-row"><span>${t("d1exam.repeatedBelow70")}</span><b>${repeated.length ? repeated.join(", ") : t("d1exam.noneYet")}</b></p>`;
   }
 
   function weakestObjectives(result){
@@ -3034,19 +3145,19 @@
     const completed = reinforcementProgress(activityId).attempts.length > 0;
     const mastered = reinforcementProgress(activityId).mastered;
     const reason = unit.id === "domain1-inference"
-      ? "Batch and asynchronous inference are still being confused."
+      ? t("recommend.reasonInference")
       : unit.id === "domain1-aws-services"
-        ? "Review purpose-built AWS services versus adjacent service capabilities."
+        ? t("recommend.reasonAwsServices")
         : unit.id === "domain1-reinforcement-lifecycle"
-          ? "Review lifecycle timing, runtime metrics, and MLOps service boundaries."
+          ? t("recommend.reasonLifecycle")
           : unit.id === "domain1-model-evaluation"
-            ? "Review overfitting, regularization, and metric-selection clues."
-            : "Use this mixed checkpoint after focused review.";
+            ? t("recommend.reasonModelEvaluation")
+            : t("recommend.reasonMixedCheckpoint");
     const hasHistory = attempts.length > 0;
     return {
       recommended: unit.id === "domain1-reinforcement-checkpoint" ? domain1ReinforcementActivities().some(activity => activity.id !== unit.id && reinforcementProgress(activity.id).mastered) : objectiveHit || (!hasHistory && unit.id === "domain1-inference"),
       urgent: objectiveHit && !mastered,
-      reason: mastered ? "Mastered. Keep available for spaced review." : completed ? "Review again to keep this distinction fresh." : reason
+      reason: mastered ? t("recommend.masteredKeepFresh") : completed ? t("recommend.reviewAgainFresh") : reason
     };
   }
 
@@ -3060,7 +3171,7 @@
     if(index === attempt.currentIndex) classes.push("is-current");
     if(attempt.answers[id] && attempt.answers[id].length) classes.push("is-answered");
     if(attempt.flagged[id]) classes.push("is-flagged");
-    return `<button class="${classes.join(" ")}" type="button" data-index="${index}" aria-label="Question ${index + 1}">${index + 1}</button>`;
+    return `<button class="${classes.join(" ")}" type="button" data-index="${index}" aria-label="${t("d1exam.questionN", {n:index + 1})}">${index + 1}</button>`;
   }
 
   function questionById(id){
@@ -3074,23 +3185,23 @@
     if(!timer) return;
     const elapsed = Date.now() - attempt.startedAt;
     if(attempt.mode === "untimed"){
-      timer.textContent = "Elapsed " + formatDuration(elapsed);
+      timer.textContent = t("timer.elapsed", {time:formatDuration(elapsed)});
       return;
     }
     const limit = window.DOMAIN1_EXAM_CONFIG.timeLimitMinutes * 60 * 1000;
     const remaining = Math.max(0, limit - elapsed);
-    timer.textContent = "Remaining " + formatDuration(remaining);
+    timer.textContent = t("timer.remaining", {time:formatDuration(remaining)});
     timer.classList.toggle("is-warning", remaining <= 10 * 60 * 1000);
     timer.classList.toggle("is-danger", remaining <= 5 * 60 * 1000);
     const announcer = document.getElementById("timerAnnouncer");
     if(announcer && remaining <= 10 * 60 * 1000 && !attempt.warnedTen){
       attempt.warnedTen = true;
-      announcer.textContent = "Ten minutes remaining.";
+      announcer.textContent = t("timer.tenMinutes");
       saveProgress();
     }
     if(announcer && remaining <= 5 * 60 * 1000 && !attempt.warnedFive){
       attempt.warnedFive = true;
-      announcer.textContent = "Five minutes remaining.";
+      announcer.textContent = t("timer.fiveMinutes");
       saveProgress();
     }
     if(remaining <= 0) submitExam(activity, true);
@@ -3115,14 +3226,14 @@
   }
 
   function performanceLabel(pct){
-    if(pct >= 85) return "Strong";
-    if(pct >= 70) return "Passing range";
-    if(pct >= 50) return "Review recommended";
-    return "Priority review";
+    if(pct >= 85) return t("performance.strong");
+    if(pct >= 70) return t("performance.passingRange");
+    if(pct >= 50) return t("performance.reviewRecommended");
+    return t("performance.priorityReview");
   }
 
   function numberWord(n){
-    return n === 2 ? "TWO" : n === 3 ? "THREE" : String(n);
+    return n === 2 ? t("enum.numberTwo") : n === 3 ? t("enum.numberThree") : String(n);
   }
 
   function compressObjectiveCodes(codes){
@@ -3163,12 +3274,14 @@
     els.menu.setAttribute("aria-expanded", String(open));
   });
   els.reset.addEventListener("click", () => {
-    if(confirm("Reset all local progress for the study hub?")){
+    if(confirm(t("topbar.confirmReset"))){
       progress = {version:1,lastOpenedActivity:null,activities:{},migratedDomain1:true};
       saveProgress();
       route();
     }
   });
+  if(els.langEn) els.langEn.addEventListener("click", () => switchLanguage("en"));
+  if(els.langEs) els.langEs.addEventListener("click", () => switchLanguage("es"));
   window.addEventListener("hashchange", route);
   if(!location.hash) location.hash = "#/home";
   route();
