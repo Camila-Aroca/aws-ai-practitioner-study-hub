@@ -17,6 +17,8 @@
       "app.eyebrow": "AIF-C01 interactive study activities",
       "app.menu": "Menu",
       "app.resetProgress": "Reset progress",
+      "app.exportProgress": "Export progress",
+      "app.importProgress": "Import progress",
       "app.footerOrg": "AWS Student Builder Group — Antonio Varas.",
       "app.footerText": "Built from the study guide and local study activities in this repository. This is not an official AWS product and does not use AWS logos.",
 
@@ -439,6 +441,7 @@
       "cyu.chooseItem": "Choose item",
       "cyu.chooseMatch": "Choose match",
       "topbar.confirmReset": "Reset all local progress for the study hub?",
+      "topbar.confirmImport": "Importing progress will overwrite your current progress. Do you want to continue?",
       "sbg.website.label": "Website"
     },
     es: {
@@ -446,6 +449,8 @@
       "app.eyebrow": "Actividades interactivas de estudio AIF-C01",
       "app.menu": "Menú",
       "app.resetProgress": "Restablecer progreso",
+      "app.exportProgress": "Exportar progreso",
+      "app.importProgress": "Importar progreso",
       "app.footerOrg": "AWS Student Builder Group — Antonio Varas.",
       "app.footerText": "Elaborado a partir de la guía de estudio y las actividades de estudio locales de este repositorio. Esta no es una herramienta oficial de AWS y no utiliza logotipos de AWS.",
 
@@ -868,6 +873,7 @@
       "cyu.chooseItem": "Elige un elemento",
       "cyu.chooseMatch": "Elige una coincidencia",
       "topbar.confirmReset": "¿Restablecer todo el progreso local del study hub?",
+      "topbar.confirmImport": "Importar el progreso sobrescribirá tu progreso actual. ¿Deseas continuar?",
       "sbg.website.label": "Sitio web"
     }
   };
