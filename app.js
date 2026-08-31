@@ -21,6 +21,8 @@
     sidebar: document.getElementById("sidebar"),
     menu: document.getElementById("menuButton"),
     reset: document.getElementById("resetProgress"),
+    export: document.getElementById("exportProgress"),
+    import: document.getElementById("importProgress"),
     langEn: document.getElementById("langBtnEn"),
     langEs: document.getElementById("langBtnEs")
   };
@@ -42,6 +44,8 @@
     if(eyebrow) eyebrow.textContent = t("app.eyebrow");
     if(title) title.textContent = t("app.title");
     els.menu.textContent = t("app.menu");
+    els.export.textContent = t("app.exportProgress");
+    els.import.textContent = t("app.importProgress");
     els.reset.textContent = t("app.resetProgress");
     if(footerOrg) footerOrg.textContent = t("app.footerOrg");
     if(footerText) footerText.textContent = t("app.footerText");
@@ -3278,6 +3282,50 @@
       progress = {version:1,lastOpenedActivity:null,activities:{},migratedDomain1:true};
       saveProgress();
       route();
+    }
+  });
+  els.export.addEventListener("click", () => {
+    try {
+      const dataStr = localStorage.getItem(STORAGE_KEY) || "{}";
+      const blob = new Blob([dataStr], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "aif-c01-study-hub-progress.json";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch(err) {
+      alert("Error exporting progress: " + err.message);
+    }
+  });
+  els.import.addEventListener("click", () => {
+    if(confirm(t("topbar.confirmImport"))){
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = ".json";
+      input.addEventListener("change", ev => {
+        const file = ev.target.files[0];
+        if(!file) return;
+        const reader = new FileReader();
+        reader.onload = e => {
+          try {
+            const parsed = JSON.parse(e.target.result);
+            if (parsed && typeof parsed === "object") {
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+              progress = loadProgress();
+              route();
+            } else {
+              alert("Invalid progress file.");
+            }
+          } catch(err) {
+            alert("Error parsing file: " + err.message);
+          }
+        };
+        reader.readAsText(file);
+      });
+      input.click();
     }
   });
   if(els.langEn) els.langEn.addEventListener("click", () => switchLanguage("en"));
