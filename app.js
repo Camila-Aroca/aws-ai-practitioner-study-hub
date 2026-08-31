@@ -969,7 +969,15 @@
       </section>
     `;
     wireRouteButtons();
-    document.querySelectorAll(".round-tab").forEach(tab => tab.addEventListener("click", () => setRoute("#/activity/" + activity.id + "/" + tab.dataset.round)));
+    const roundTabs = document.getElementById("roundTabs");
+    if (roundTabs) {
+      roundTabs.addEventListener("click", (e) => {
+        const tab = e.target.closest(".round-tab");
+        if (tab) {
+          setRoute("#/activity/" + activity.id + "/" + tab.dataset.round);
+        }
+      });
+    }
     renderRoundBoard();
   }
 
